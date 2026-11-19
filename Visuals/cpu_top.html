@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CPU Top (cpu_top) — High-Level Harvard Datapath</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #CBD5E1; --wire-on: #10B981; --wire-ctrl: #3B82F6;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .slide-stage { width: 1260px; max-width: 100%; background: var(--bg); padding: 24px 32px; display: flex; flex-direction: column; gap: 18px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; }
+  .header h1 { font-size: 25px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 16px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.25s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .wire.ctrl { stroke: var(--wire-ctrl); }
+  .mod-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.6; rx: 10; transition: all 0.25s ease; }
+  .mod-box.active { fill: #ECFDF5; stroke: #10B981; stroke-width: 3.5; }
+  .mod-title { font-size: 14px; font-weight: 800; fill: var(--text); text-anchor: middle; }
+  .mod-val { font-family: monospace; font-size: 12px; font-weight: 800; fill: #0F172A; text-anchor: middle; }
+  .status-banner { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 10px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>8-Bit MIPS-Like Harvard RISC Processor (cpu_top)</h1>
+      <div class="equation-badge" id="step-badge">Program Execution Trace (0x00 &rarr; 0x05)</div>
+    </div>
+
+    <div class="schematic-card">
+      <svg viewBox="0 0 1120 420">
+        <!-- Inter-Module Datapath Buses -->
+        <!-- PC -> ROM -->
+        <path id="b-pc-rom" class="wire" d="M 145 220 L 205 220" />
+        <!-- ROM -> Decoder/FSM -->
+        <path id="b-rom-dec" class="wire" d="M 345 220 L 385 220 L 385 100 L 425 100" />
+        <!-- ROM/Decoder -> RegFile -->
+        <path id="b-dec-rf" class="wire" d="M 385 220 L 425 220" />
+        <!-- Decoder Immediate -> ALU & PC & RAM -->
+        <path id="b-imm-alu" class="wire" d="M 505 145 L 505 280 L 665 280" />
+        <path id="b-imm-ram" class="wire" d="M 505 145 L 505 345 L 860 345 L 860 265" />
+        <path id="b-imm-pc" class="wire" d="M 425 80 L 85 80 L 85 165" />
+        <!-- RegFile -> ALU -->
+        <path id="b-rf-alu1" class="wire" d="M 585 200 L 665 200" />
+        <path id="b-rf-alu2" class="wire" d="M 585 240 L 665 240" />
+        <!-- RegFile RD -> RAM Store Data -->
+        <path id="b-rf-ram" class="wire" d="M 620 200 L 620 320 L 820 320 L 820 220 L 850 220" />
+        <!-- ALU -> RegFile Writeback -->
+        <path id="b-alu-wb" class="wire" d="M 790 220 L 810 220 L 810 385 L 460 385 L 460 285" />
+        <!-- RAM/MMIO -> RegFile Writeback -->
+        <path id="b-ram-wb" class="wire" d="M 990 215 L 1020 215 L 1020 385 L 460 385" />
+        <!-- RAM/MMIO -> Physical LEDs -->
+        <path id="b-mmio-led" class="wire" d="M 990 180 L 1035 180" />
+
+        <!-- 1. Program Counter -->
+        <rect id="m-pc" class="mod-box" x="25" y="165" width="120" height="110" />
+        <text class="mod-title" x="85" y="195">Program</text>
+        <text class="mod-title" x="85" y="213">Counter</text>
+        <rect x="40" y="230" width="90" height="28" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-pc" class="mod-val" x="85" y="248">PC = 0x00</text>
+
+        <!-- 2. Instruction ROM -->
+        <rect id="m-rom" class="mod-box" x="205" y="155" width="140" height="130" />
+        <text class="mod-title" x="275" y="185">Instruction ROM</text>
+        <text x="275" y="203" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">256 x 16-Bit</text>
+        <rect x="217" y="220" width="116" height="44" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-rom-hex" class="mod-val" x="275" y="238">0x800A</text>
+        <text id="v-rom-asm" x="275" y="255" font-family="monospace" font-size="11" font-weight="800" fill="#10B981" text-anchor="middle">LDI R0, 10</text>
+
+        <!-- 3. Decoder & Main Control FSM -->
+        <rect id="m-dec" class="mod-box" x="425" y="45" width="215" height="100" />
+        <text class="mod-title" x="532" y="72">Instruction Decoder &amp; FSM</text>
+        <rect x="440" y="85" width="185" height="44" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-dec" class="mod-val" x="532" y="104">OP=1000 | IMM8=0x0A</text>
+        <text id="v-fsm" x="532" y="121" font-family="monospace" font-size="11" font-weight="800" fill="#3B82F6" text-anchor="middle">reg_we=1, pc_inc=1</text>
+
+        <!-- 4. 8x8 Multi-Port Register File -->
+        <rect id="m-rf" class="mod-box" x="425" y="170" width="160" height="115" />
+        <text class="mod-title" x="505" y="195">8x8 Register File</text>
+        <rect x="440" y="210" width="130" height="60" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-r0" class="mod-val" x="505" y="232">R0 = 0x00 (0)</text>
+        <text id="v-r1" class="mod-val" x="505" y="255">R1 = 0x00 (0)</text>
+
+        <!-- 5. 8-Bit ALU & Branch Logic -->
+        <rect id="m-alu" class="mod-box" x="665" y="170" width="125" height="130" />
+        <text class="mod-title" x="727" y="195">8-Bit ALU</text>
+        <text x="727" y="212" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">&amp; Branch Flags</text>
+        <rect x="677" y="225" width="100" height="58" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-alu" class="mod-val" x="727" y="246">RES = 0x0A</text>
+        <text id="v-flags" x="727" y="268" font-family="monospace" font-size="11" font-weight="800" fill="#475569" text-anchor="middle">Z=0 C=0</text>
+
+        <!-- 6. Data RAM & MMIO Interface -->
+        <rect id="m-ram" class="mod-box" x="850" y="145" width="140" height="120" />
+        <text class="mod-title" x="920" y="172">Data RAM</text>
+        <text x="920" y="188" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">&amp; MMIO (0x00-0xFF)</text>
+        <rect x="862" y="200" width="116" height="50" rx="5" fill="#FFF" stroke="#CBD5E1"/>
+        <text id="v-ram" class="mod-val" x="920" y="222">RAM[0x10]=0x00</text>
+        <text id="v-mmio" class="mod-val" x="920" y="240">MMIO[0xF2]=0x00</text>
+
+        <!-- 7. Physical FPGA LEDs -->
+        <rect id="m-led" class="mod-box" x="1035" y="145" width="75" height="80" />
+        <text class="mod-title" x="1072" y="172">FPGA</text>
+        <text class="mod-title" x="1072" y="188">LEDs</text>
+        <text id="v-led" class="mod-val" x="1072" y="212" fill="#10B981">0x00</text>
+
+        <g id="pulse-layer"></g>
+      </svg>
+    </div>
+
+    <div class="status-banner">
+      <span id="banner">Executing Instruction 0x00...</span>
+      <span style="font-family:monospace; color:#10B981;" id="cycle-tag">4-Stage FSM Cycle Complete</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Instruction &rarr;</button>
+  </div>
+
+<script>
+  const instructions = [
+    {
+      pc: "PC = 0x00", hex: "0x800A", asm: "LDI R0, 10",
+      dec: "OP=1000 | IMM8=0x0A", fsm: "alu_imm=1, reg_we=1",
+      alu: "RES = 0x0A", flags: "Z=0 C=0",
+      r0: "R0 = 0x0A (10)", r1: "R1 = 0x00 (0)",
+      ram: "RAM[0x10]=0x00", mmio: "MMIO[0xF2]=0x00", led: "0x00",
+      wires: ["b-pc-rom", "b-rom-dec", "b-imm-alu", "b-alu-wb"],
+      mods: ["m-pc", "m-rom", "m-dec", "m-alu", "m-rf"],
+      text: "1. LDI R0, 10: PC=0x00 fetches 0x800A → IMM8 (10) passes through ALU and writes into R0"
+    },
+    {
+      pc: "PC = 0x01", hex: "0x8205", asm: "LDI R1, 5",
+      dec: "OP=1000 | IMM8=0x05", fsm: "alu_imm=1, reg_we=1",
+      alu: "RES = 0x05", flags: "Z=0 C=0",
+      r0: "R0 = 0x0A (10)", r1: "R1 = 0x05 (5)",
+      ram: "RAM[0x10]=0x00", mmio: "MMIO[0xF2]=0x00", led: "0x00",
+      wires: ["b-pc-rom", "b-rom-dec", "b-imm-alu", "b-alu-wb"],
+      mods: ["m-pc", "m-rom", "m-dec", "m-alu", "m-rf"],
+      text: "2. LDI R1, 5: PC=0x01 fetches 0x8205 → IMM8 (5) passes through ALU and writes into R1"
+    },
+    {
+      pc: "PC = 0x02", hex: "0x1040", asm: "ADD R0, R1",
+      dec: "OP=0001 | RD=R0, RS=R1", fsm: "reg_we=1, flag_we=1",
+      alu: "RES = 0x0F", flags: "Z=0 C=0",
+      r0: "R0 = 0x0F (15)", r1: "R1 = 0x05 (5)",
+      ram: "RAM[0x10]=0x00", mmio: "MMIO[0xF2]=0x00", led: "0x00",
+      wires: ["b-pc-rom", "b-rom-dec", "b-dec-rf", "b-rf-alu1", "b-rf-alu2", "b-alu-wb"],
+      mods: ["m-pc", "m-rom", "m-dec", "m-rf", "m-alu"],
+      text: "3. ADD R0, R1: Dual-read ports send R0 (10) and R1 (5) to ALU → Sum 15 (0x0F) written back to R0"
+    },
+    {
+      pc: "PC = 0x03", hex: "0xB010", asm: "ST R0, [0x10]",
+      dec: "OP=1011 | ADDR=0x10", fsm: "mem_we=1, ram_we=1",
+      alu: "RES = 0x0F", flags: "Z=0 C=0",
+      r0: "R0 = 0x0F (15)", r1: "R1 = 0x05 (5)",
+      ram: "RAM[0x10]=0x0F", mmio: "MMIO[0xF2]=0x00", led: "0x00",
+      wires: ["b-pc-rom", "b-rom-dec", "b-dec-rf", "b-rf-ram", "b-imm-ram"],
+      mods: ["m-pc", "m-rom", "m-dec", "m-rf", "m-ram"],
+      text: "4. ST R0, [0x10]: R0 value (0x0F) and address 0x10 routed to Data RAM → RAM[0x10] stores 15"
+    },
+    {
+      pc: "PC = 0x04", hex: "0xB0F2", asm: "ST R0, [0xF2]",
+      dec: "OP=1011 | ADDR=0xF2", fsm: "mem_we=1 (MMIO LEDs)",
+      alu: "RES = 0x0F", flags: "Z=0 C=0",
+      r0: "R0 = 0x0F (15)", r1: "R1 = 0x05 (5)",
+      ram: "RAM[0x10]=0x0F", mmio: "MMIO[0xF2]=0x0F", led: "0x0F (15)",
+      wires: ["b-pc-rom", "b-rom-dec", "b-dec-rf", "b-rf-ram", "b-imm-ram", "b-mmio-led"],
+      mods: ["m-pc", "m-rom", "m-dec", "m-rf", "m-ram", "m-led"],
+      text: "5. ST R0, [0xF2]: Address 0xF2 hits MMIO decoder → Physical FPGA LEDs light up with 00001111 (15)!"
+    },
+    {
+      pc: "PC = 0x05", hex: "0xD005", asm: "JMP 0x05",
+      dec: "OP=1101 | TARGET=0x05", fsm: "is_branch=1, pc_load=1",
+      alu: "RES = 0x0F", flags: "Z=0 C=0",
+      r0: "R0 = 0x0F (15)", r1: "R1 = 0x05 (5)",
+      ram: "RAM[0x10]=0x0F", mmio: "MMIO[0xF2]=0x0F", led: "0x0F (15)",
+      wires: ["b-pc-rom", "b-rom-dec", "b-imm-pc"],
+      mods: ["m-pc", "m-rom", "m-dec"],
+      text: "6. JMP 0x05: Unconditional jump loads target 0x05 directly back into Program Counter (Halt Loop)"
+    }
+  ];
+
+  const allWires = ["b-pc-rom","b-rom-dec","b-dec-rf","b-imm-alu","b-imm-ram","b-imm-pc","b-rf-alu1","b-rf-alu2","b-rf-ram","b-alu-wb","b-ram-wb","b-mmio-led"];
+  const allMods = ["m-pc","m-rom","m-dec","m-rf","m-alu","m-ram","m-led"];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "9");
+      circle.setAttribute("fill", "#10B981");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = instructions[idx];
+
+    allWires.forEach(w => document.getElementById(w).classList.remove("high"));
+    allMods.forEach(m => document.getElementById(m).classList.remove("active"));
+
+    c.wires.forEach(w => document.getElementById(w).classList.add("high"));
+    c.mods.forEach(m => document.getElementById(m).classList.add("active"));
+
+    document.getElementById("v-pc").textContent = c.pc;
+    document.getElementById("v-rom-hex").textContent = c.hex;
+    document.getElementById("v-rom-asm").textContent = c.asm;
+    document.getElementById("v-dec").textContent = c.dec;
+    document.getElementById("v-fsm").textContent = c.fsm;
+    document.getElementById("banner").textContent = c.text;
+
+    // Stage 1: Fetch & Decode Pulses
+    await animatePulse("b-pc-rom", 550, token);
+    if (token !== runToken) return;
+    await animatePulse("b-rom-dec", 550, token);
+    if (token !== runToken) return;
+
+    // Stage 2: Execute & Writeback Pulses
+    const execWires = c.wires.filter(w => w !== "b-pc-rom" && w !== "b-rom-dec");
+    await Promise.all(execWires.map(w => animatePulse(w, 750, token)));
+    if (token !== runToken) return;
+
+    document.getElementById("v-alu").textContent = c.alu;
+    document.getElementById("v-flags").textContent = c.flags;
+    document.getElementById("v-r0").textContent = c.r0;
+    document.getElementById("v-r1").textContent = c.r1;
+    document.getElementById("v-ram").textContent = c.ram;
+    document.getElementById("v-mmio").textContent = c.mmio;
+    document.getElementById("v-led").textContent = c.led;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % instructions.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1700);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % instructions.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

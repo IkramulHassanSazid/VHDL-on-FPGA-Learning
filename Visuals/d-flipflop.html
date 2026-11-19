@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>D Flip-Flop — Sequential Memory Foundation</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981; --wire-clk: #3B82F6;
+    --bit-zero: #64748B; --bit-one: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1120px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .wire.clk-edge { stroke: var(--wire-clk); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .gate-label { font-size: 18px; font-weight: 800; fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+  .port-label { font-size: 17px; font-weight: 800; fill: var(--text); dominant-baseline: central; }
+  .bit-circle { transition: fill 0.25s ease; stroke: #FFFFFF; stroke-width: 2; }
+  .bit-text { font-size: 14px; font-weight: 800; fill: #FFFFFF; text-anchor: middle; dominant-baseline: central; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 13px; font-weight: 800; padding: 11px 8px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 12px 8px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #E2E8F0; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 var(--bit-one); }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px 16px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>D Flip-Flop — Synchronous 1-Bit Storage</h1>
+      <div class="equation-badge">if reset='1' &rarr; Q &lt;= '0' &nbsp;|&nbsp; elsif rising_edge(clk) &rarr; Q &lt;= D</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 580 340">
+          <!-- Input Wires -->
+          <path id="w-d" class="wire" d="M 85 115 L 220 115" />
+          <path id="w-clk" class="wire" d="M 85 215 L 220 215" />
+          <path id="w-rst" class="wire" d="M 290 40 L 290 75" />
+          <!-- Output Wire -->
+          <path id="w-q" class="wire" d="M 360 165 L 495 165" />
+
+          <!-- DFF Block -->
+          <rect x="220" y="75" width="140" height="180" class="gate-box" />
+          <!-- IEEE Clock Triangle -->
+          <polygon points="220,203 238,215 220,227" fill="none" stroke="#1E293B" stroke-width="2.5" />
+          <text class="gate-label" x="290" y="135">D Flip-Flop</text>
+          <text x="236" y="115" font-size="14" font-weight="800" fill="#475569" dominant-baseline="central">D</text>
+          <text x="245" y="215" font-size="14" font-weight="800" fill="#475569" dominant-baseline="central">CLK</text>
+          <text x="290" y="92" font-size="13" font-weight="800" fill="#475569" text-anchor="middle">RST</text>
+          <text x="342" y="165" font-size="14" font-weight="800" fill="#475569" text-anchor="end" dominant-baseline="central">Q</text>
+
+          <!-- Internal Memory Cell Indicator -->
+          <rect x="260" y="160" width="60" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+          <text id="mem-state" x="290" y="178" font-size="16" font-weight="800" fill="#0F172A" text-anchor="middle" dominant-baseline="central">Q=0</text>
+
+          <!-- Port Labels -->
+          <text class="port-label" x="30" y="115">D</text>
+          <text class="port-label" x="20" y="215">clk</text>
+          <text class="port-label" x="235" y="25">reset</text>
+          <text class="port-label" x="530" y="165">Q</text>
+
+          <!-- Badges -->
+          <g transform="translate(85, 115)"><circle id="c-d" class="bit-circle" r="15" fill="#64748B"/><text id="t-d" class="bit-text">0</text></g>
+          <g transform="translate(85, 215)"><circle id="c-clk" class="bit-circle" r="15" fill="#64748B"/><text id="t-clk" class="bit-text">0</text></g>
+          <g transform="translate(290, 40)"><circle id="c-rst" class="bit-circle" r="14" fill="#64748B"/><text id="t-rst" class="bit-text">0</text></g>
+          <g transform="translate(495, 165)"><circle id="c-q" class="bit-circle" r="16" fill="#64748B"/><text id="t-q" class="bit-text">0</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">Sequential Behavior Table</div>
+        <table>
+          <thead><tr><th>reset</th><th>clk</th><th>D</th><th>Q (Next)</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>1</td><td>X</td><td>X</td><td>0</td><td>Async Reset</td></tr>
+            <tr id="row-1"><td>0</td><td>0 (Hold)</td><td>1</td><td>0 (No Change)</td><td>Wait for Edge</td></tr>
+            <tr id="row-2"><td>0</td><td>&uarr; Rising</td><td>1</td><td>1</td><td>Capture D=1</td></tr>
+            <tr id="row-3"><td>0</td><td>&uarr; Rising</td><td>0</td><td>0</td><td>Capture D=0</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Initializing...</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Case &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { rst: 1, clk: "0", d: 0, qBefore: 0, qAfter: 0, edge: false, text: "Async Reset (reset=1): Q is cleared to 0 immediately" },
+    { rst: 0, clk: "0", d: 1, qBefore: 0, qAfter: 0, edge: false, text: "D changes to 1 while clk=0: Q ignores D and holds 0" },
+    { rst: 0, clk: "↑", d: 1, qBefore: 0, qAfter: 1, edge: true,  text: "Rising Clock Edge (0→1): D=1 is captured into Q=1" },
+    { rst: 0, clk: "↑", d: 0, qBefore: 1, qAfter: 0, edge: true,  text: "Rising Clock Edge (0→1): D=0 is captured into Q=0" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function setBadge(id, val, color) {
+    const c = document.getElementById(`c-${id}`);
+    const t = document.getElementById(`t-${id}`);
+    const w = document.getElementById(`w-${id}`);
+    if (c) c.setAttribute("fill", color || (val == 1 ? "#10B981" : "#64748B"));
+    if (t) t.textContent = val;
+    if (w) {
+      w.classList.toggle("high", val == 1);
+      w.classList.toggle("clk-edge", val === "↑");
+    }
+  }
+
+  function animatePulse(pathId, color, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", color);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < 4; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    setBadge("rst", c.rst);
+    setBadge("d", c.d);
+    setBadge("clk", c.edge ? "0" : c.clk, "#64748B");
+    setBadge("q", c.qBefore);
+    document.getElementById("mem-state").textContent = `Q=${c.qBefore}`;
+    document.getElementById("banner").textContent = c.text;
+
+    if (c.rst === 1) {
+      await animatePulse("w-rst", "#10B981", 750, token);
+      if (token !== runToken) return;
+      await animatePulse("w-q", "#64748B", 650, token);
+    } else if (!c.edge) {
+      await animatePulse("w-d", c.d ? "#10B981" : "#64748B", 850, token);
+    } else {
+      await animatePulse("w-d", c.d ? "#10B981" : "#64748B", 700, token);
+      if (token !== runToken) return;
+      setBadge("clk", "↑", "#3B82F6");
+      await animatePulse("w-clk", "#3B82F6", 700, token);
+      if (token !== runToken) return;
+      document.getElementById("mem-state").textContent = `Q=${c.qAfter}`;
+      await animatePulse("w-q", c.qAfter ? "#10B981" : "#64748B", 700, token);
+      if (token !== runToken) return;
+      setBadge("q", c.qAfter);
+    }
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1500);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

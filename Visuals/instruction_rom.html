@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>256 x 16-Bit Instruction ROM (instruction_rom)</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1200px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-on); stroke-width: 4; stroke-linecap: round; }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 12px; font-weight: 800; padding: 9px 6px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 9px 6px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>256 x 16-Bit Instruction ROM (instruction_rom)</h1>
+      <div class="equation-badge">instr[15:0] &lt;= ROM_MEMORY(to_integer(unsigned(addr)))</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 600 320">
+          <path id="w-addr" class="wire" d="M 105 160 L 205 160" />
+          <path id="w-instr" class="wire" d="M 385 160 L 465 160" />
+
+          <rect x="205" y="70" width="180" height="180" class="gate-box" />
+          <text x="295" y="110" font-size="17" font-weight="800" text-anchor="middle">Instruction ROM</text>
+          <text x="295" y="132" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">256 x 16-Bit Harvard Bus</text>
+          <rect x="225" y="155" width="140" height="55" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+          <text id="rom-asm" x="295" y="182" font-family="monospace" font-size="14" font-weight="800" fill="#10B981" text-anchor="middle" dominant-baseline="central">LDI R0, 0x0A</text>
+
+          <text x="15" y="130" font-size="14" font-weight="800">addr[7:0]</text>
+          <g transform="translate(20, 145)"><rect width="85" height="30" rx="6" fill="#1E293B"/><text id="t-addr" x="42.5" y="15" fill="#FFF" font-family="monospace" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="central">0x00</text></g>
+
+          <text x="465" y="125" font-size="14" font-weight="800">instr[15:0]</text>
+          <g transform="translate(465, 142)"><rect width="120" height="36" rx="6" fill="#10B981"/><text id="t-instr" x="60" y="18" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0x800A</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">Pre-Loaded ROM Program (instruction_rom.vhd)</div>
+        <table>
+          <thead><tr><th>PC (addr)</th><th>Binary [15:0]</th><th>Hex</th><th>Assembly</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>0x00</td><td>1000_000_0_00001010</td><td>0x800A</td><td>LDI R0, 10</td></tr>
+            <tr id="row-1"><td>0x01</td><td>1000_001_0_00000101</td><td>0x8205</td><td>LDI R1, 5</td></tr>
+            <tr id="row-2"><td>0x02</td><td>0001_000_001_000000</td><td>0x1040</td><td>ADD R0, R1</td></tr>
+            <tr id="row-3"><td>0x03</td><td>1011_000_0_00010000</td><td>0xB010</td><td>ST R0, [0x10]</td></tr>
+            <tr id="row-4"><td>0x04</td><td>1011_000_0_11110010</td><td>0xB0F2</td><td>ST R0, [0xF2]</td></tr>
+            <tr id="row-5"><td>0x05</td><td>1101_000_0_00000101</td><td>0xD005</td><td>JMP 0x05</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Fetching 0x00...</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Instruction &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { addr: "0x00", hex: "0x800A", asm: "LDI R0, 0x0A", text: "ROM[0x00]: Outputs 16-bit word 1000_0000_0000_1010 (Load 10 into R0)" },
+    { addr: "0x01", hex: "0x8205", asm: "LDI R1, 0x05", text: "ROM[0x01]: Outputs 16-bit word 1000_0010_0000_0101 (Load 5 into R1)" },
+    { addr: "0x02", hex: "0x1040", asm: "ADD R0, R1",   text: "ROM[0x02]: Outputs 16-bit word 0001_0000_0100_0000 (Add R0 + R1 = 15)" },
+    { addr: "0x03", hex: "0xB010", asm: "ST R0, [0x10]", text: "ROM[0x03]: Outputs 16-bit word 1011_0000_0001_0000 (Store R0 to RAM 0x10)" },
+    { addr: "0x04", hex: "0xB0F2", asm: "ST R0, [0xF2]", text: "ROM[0x04]: Outputs 16-bit word 1011_0000_1111_0010 (Store R0 to MMIO LEDs)" },
+    { addr: "0x05", hex: "0xD005", asm: "JMP 0x05",     text: "ROM[0x05]: Outputs 16-bit word 1101_0000_0000_0101 (Halt Loop at 0x05)" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", "#10B981");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < cases.length; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    document.getElementById("t-addr").textContent = c.addr;
+    document.getElementById("banner").textContent = c.text;
+
+    await animatePulse("w-addr", 700, token);
+    if (token !== runToken) return;
+    document.getElementById("rom-asm").textContent = c.asm;
+    await animatePulse("w-instr", 650, token);
+    if (token !== runToken) return;
+    document.getElementById("t-instr").textContent = c.hex;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1400);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

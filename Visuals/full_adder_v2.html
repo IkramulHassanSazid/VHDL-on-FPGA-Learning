@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Full Adder Truth Table & Signal Flow</title>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F8FAFC;
+    --border: #1E293B;
+    --wire-off: #94A3B8;
+    --wire-on: #10B981;
+    --bit-zero: #64748B;
+    --bit-one: #10B981;
+    --text: #0F172A;
+    --muted: #475569;
+    --highlight-row: #ECFDF5;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .slide-stage {
+    width: 1200px;
+    max-width: 100%;
+    background: var(--bg);
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #E2E8F0;
+    padding-bottom: 14px;
+  }
+
+  .header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .equation-badge {
+    background: var(--surface);
+    border: 1.5px solid #CBD5E1;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .schematic-card {
+    background: var(--bg);
+    border: 2px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+  }
+
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+
+  .wire {
+    fill: none;
+    stroke: var(--wire-off);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.3s ease;
+  }
+
+  .wire.high {
+    stroke: var(--wire-on);
+  }
+
+  .junction-dot {
+    fill: var(--wire-off);
+    transition: fill 0.3s ease;
+  }
+
+  .junction-dot.high {
+    fill: var(--wire-on);
+  }
+
+  .gate-box {
+    fill: var(--surface);
+    stroke: var(--border);
+    stroke-width: 2.8;
+  }
+
+  .gate-label {
+    font-size: 16px;
+    font-weight: 800;
+    fill: var(--text);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .port-label {
+    font-size: 18px;
+    font-weight: 800;
+    fill: var(--text);
+    dominant-baseline: central;
+  }
+
+  .bit-circle {
+    transition: fill 0.25s ease;
+    stroke: #FFFFFF;
+    stroke-width: 2;
+  }
+
+  .bit-text {
+    font-size: 15px;
+    font-weight: 800;
+    fill: #FFFFFF;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .table-card {
+    background: var(--surface);
+    border: 2px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .table-title {
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #FFFFFF;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid #CBD5E1;
+  }
+
+  th {
+    background: #F1F5F9;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+    padding: 9px 8px;
+    text-align: center;
+    border-bottom: 2px solid #CBD5E1;
+  }
+
+  td {
+    padding: 8px 8px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    border-bottom: 1px solid #E2E8F0;
+    transition: background-color 0.25s ease;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr.active-row {
+    background-color: var(--highlight-row);
+  }
+
+  tr.active-row td:first-child {
+    box-shadow: inset 4px 0 0 var(--bit-one);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .pill-0 { background: var(--bit-zero); }
+  .pill-1 { background: var(--bit-one); }
+
+  .status-banner {
+    margin-top: 14px;
+    background: #FFFFFF;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    opacity: 0.45;
+    transition: opacity 0.2s;
+  }
+  .controls:hover { opacity: 1; }
+
+  button {
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #E2E8F0; }
+</style>
+</head>
+<body>
+
+  <div class="slide-stage" id="captureArea">
+    <div class="header">
+      <h1>Full Adder — Signal Propagation &amp; Truth Table</h1>
+      <div class="equation-badge">Sum = A &oplus; B &oplus; Cin &nbsp;|&nbsp; Cout = (A &middot; B) + (Cin &middot; (A &oplus; B))</div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Left: Animated Logic Diagram -->
+      <div class="schematic-card">
+        <svg viewBox="0 0 720 380" id="circuitSvg">
+          <defs>
+            <!-- IEEE Standard Gate Templates -->
+            <g id="gate-xor">
+              <path d="M -12 -35 Q 13 0 -12 35" fill="none" stroke="var(--border)" stroke-width="3" />
+              <path class="gate-box" d="M 0 -35 Q 68 -35 108 0 Q 68 35 0 35 Q 25 0 0 -35 Z" />
+              <text class="gate-label" x="45" y="0">XOR</text>
+            </g>
+            <g id="gate-and">
+              <path class="gate-box" d="M 0 -35 L 70 -35 A 35 35 0 0 1 70 35 L 0 35 Z" />
+              <text class="gate-label" x="40" y="0">AND</text>
+            </g>
+            <g id="gate-or">
+              <path class="gate-box" d="M 0 -35 Q 30 0 0 35 Q 70 35 108 0 Q 70 -35 0 -35 Z" />
+              <text class="gate-label" x="45" y="0">OR</text>
+            </g>
+          </defs>
+
+          <!-- Input Wires -->
+          <!-- A to XOR1 and AND1 -->
+          <path id="w-a-xor1" class="wire" d="M 50 65 L 180 65" />
+          <path id="w-a-and1" class="wire" d="M 110 65 L 110 185 L 180 185" />
+          <circle id="j-a" class="junction-dot" cx="110" cy="65" r="5" />
+
+          <!-- B to XOR1 and AND1 -->
+          <path id="w-b-xor1" class="wire" d="M 50 135 L 80 135 L 80 95 L 180 95" />
+          <path id="w-b-and1" class="wire" d="M 80 135 L 80 215 L 180 215" />
+          <circle id="j-b" class="junction-dot" cx="80" cy="135" r="5" />
+
+          <!-- Cin to XOR2 and AND2 -->
+          <path id="w-cin-xor2" class="wire" d="M 50 310 L 360 310 L 360 125 L 380 125" />
+          <path id="w-cin-and2" class="wire" d="M 360 310 L 360 285 L 380 285" />
+          <circle id="j-cin" class="junction-dot" cx="360" cy="310" r="5" />
+
+          <!-- Internal Wires Stage 1 -> Stage 2 -->
+          <!-- S1 to XOR2 and AND2 -->
+          <path id="w-s1-xor2" class="wire" d="M 288 80 L 330 80 L 330 95 L 380 95" />
+          <path id="w-s1-and2" class="wire" d="M 330 80 L 330 255 L 380 255" />
+          <circle id="j-s1" class="junction-dot" cx="330" cy="80" r="5" />
+
+          <!-- C1 and C2 to OR1 -->
+          <path id="w-c1-or" class="wire" d="M 288 200 L 510 200 L 510 220 L 540 220" />
+          <path id="w-c2-or" class="wire" d="M 488 270 L 510 270 L 510 250 L 540 250" />
+
+          <!-- Output Wires -->
+          <path id="w-sum" class="wire" d="M 488 110 L 660 110" />
+          <path id="w-cout" class="wire" d="M 648 235 L 660 235" />
+
+          <!-- Logic Gate Instances -->
+          <use href="#gate-xor" transform="translate(180, 80)" />
+          <use href="#gate-and" transform="translate(180, 200)" />
+          <use href="#gate-xor" transform="translate(380, 110)" />
+          <use href="#gate-and" transform="translate(380, 270)" />
+          <use href="#gate-or" transform="translate(540, 235)" />
+
+          <!-- Port Names -->
+          <text class="port-label" x="15" y="65">A</text>
+          <text class="port-label" x="15" y="135">B</text>
+          <text class="port-label" x="2" y="310">Cin</text>
+
+          <!-- Input Bit Badges -->
+          <g id="badge-a" transform="translate(50, 65)">
+            <circle id="c-a" class="bit-circle" r="14" fill="#64748B" />
+            <text id="t-a" class="bit-text">0</text>
+          </g>
+          <g id="badge-b" transform="translate(50, 135)">
+            <circle id="c-b" class="bit-circle" r="14" fill="#64748B" />
+            <text id="t-b" class="bit-text">0</text>
+          </g>
+          <g id="badge-cin" transform="translate(50, 310)">
+            <circle id="c-cin" class="bit-circle" r="14" fill="#64748B" />
+            <text id="t-cin" class="bit-text">0</text>
+          </g>
+
+          <!-- Output Bit Badges -->
+          <g id="badge-sum" transform="translate(660, 110)">
+            <circle id="c-sum" class="bit-circle" r="14" fill="#64748B" />
+            <text id="t-sum" class="bit-text">0</text>
+          </g>
+          <g id="badge-cout" transform="translate(660, 235)">
+            <circle id="c-cout" class="bit-circle" r="14" fill="#64748B" />
+            <text id="t-cout" class="bit-text">0</text>
+          </g>
+
+          <!-- Layer for Traveling Signal Pulses -->
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <!-- Right: Live Truth Table -->
+      <div class="table-card">
+        <div class="table-title">Truth Table (8 Cases)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>Cin</th>
+              <th>Cout</th>
+              <th>Sum</th>
+            </tr>
+          </thead>
+          <tbody id="tt-body">
+            <tr id="row-0">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+            <tr id="row-1">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+            <tr id="row-2">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+            <tr id="row-3">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+            <tr id="row-4">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+            <tr id="row-5">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+            <tr id="row-6">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+            <tr id="row-7">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="math-banner">0 + 0 + 0 = 00₂ (Cout: 0, Sum: 0)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Case &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { a: 0, b: 0, cin: 0, sum: 0, cout: 0, text: "0 + 0 + 0 = 00₂ (Cout: 0, Sum: 0)" },
+    { a: 0, b: 0, cin: 1, sum: 1, cout: 0, text: "0 + 0 + 1 = 01₂ (Cout: 0, Sum: 1)" },
+    { a: 0, b: 1, cin: 0, sum: 1, cout: 0, text: "0 + 1 + 0 = 01₂ (Cout: 0, Sum: 1)" },
+    { a: 0, b: 1, cin: 1, sum: 0, cout: 1, text: "0 + 1 + 1 = 10₂ (Cout: 1, Sum: 0)" },
+    { a: 1, b: 0, cin: 0, sum: 1, cout: 0, text: "1 + 0 + 0 = 01₂ (Cout: 0, Sum: 1)" },
+    { a: 1, b: 0, cin: 1, sum: 0, cout: 1, text: "1 + 0 + 1 = 10₂ (Cout: 1, Sum: 0)" },
+    { a: 1, b: 1, cin: 0, sum: 0, cout: 1, text: "1 + 1 + 0 = 10₂ (Cout: 1, Sum: 0)" },
+    { a: 1, b: 1, cin: 1, sum: 1, cout: 1, text: "1 + 1 + 1 = 11₂ (Cout: 1, Sum: 1)" }
+  ];
+
+  const COLOR_ONE = "#10B981";
+  const COLOR_ZERO = "#64748B";
+
+  let currentIdx = 0;
+  let isPlaying = true;
+  let timer = null;
+
+  function setBadge(prefix, val) {
+    const circle = document.getElementById(`c-${prefix}`);
+    const text = document.getElementById(`t-${prefix}`);
+    circle.setAttribute("fill", val === 1 ? COLOR_ONE : COLOR_ZERO);
+    text.textContent = val;
+  }
+
+  function setWire(id, isHigh) {
+    const el = document.getElementById(id);
+    if (isHigh) el.classList.add("high");
+    else el.classList.remove("high");
+  }
+
+  function animatePulse(pathId, val, durationMs) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      const totalLen = path.getTotalLength();
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", val === 1 ? COLOR_ONE : COLOR_ZERO);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("class", "bit-text");
+      txt.setAttribute("font-size", "11");
+      txt.textContent = val;
+
+      g.appendChild(circle);
+      g.appendChild(txt);
+      layer.appendChild(g);
+
+      const start = performance.now();
+      function frame(now) {
+        const progress = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(progress * totalLen);
+        g.setAttribute("transform", `translate(${pt.x}, ${pt.y})`);
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          layer.removeChild(g);
+          resolve();
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const c = cases[idx];
+
+    // Highlight active truth table row
+    for (let i = 0; i < 8; i++) {
+      document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+    }
+
+    // Reset Outputs & Internal wires
+    setWire("w-sum", false); setWire("w-cout", false);
+    setWire("w-s1-xor2", false); setWire("w-s1-and2", false); setWire("j-s1", false);
+    setWire("w-c1-or", false); setWire("w-c2-or", false);
+    
+    document.getElementById("c-sum").setAttribute("fill", "#CBD5E1");
+    document.getElementById("t-sum").textContent = "?";
+    document.getElementById("c-cout").setAttribute("fill", "#CBD5E1");
+    document.getElementById("t-cout").textContent = "?";
+
+    // Latch Inputs
+    setBadge("a", c.a); setBadge("b", c.b); setBadge("cin", c.cin);
+    setWire("w-a-xor1", c.a === 1); setWire("w-a-and1", c.a === 1); setWire("j-a", c.a === 1);
+    setWire("w-b-xor1", c.b === 1); setWire("w-b-and1", c.b === 1); setWire("j-b", c.b === 1);
+    setWire("w-cin-xor2", c.cin === 1); setWire("w-cin-and2", c.cin === 1); setWire("j-cin", c.cin === 1);
+
+    document.getElementById("math-banner").textContent = `Inputs: A=${c.a}, B=${c.b}, Cin=${c.cin} → Evaluating...`;
+
+    // Calculate Stage 1 logic
+    const s1 = c.a ^ c.b;
+    const c1 = c.a & c.b;
+
+    // Stage 1: Wait for A & B pulses to reach first gates
+    await Promise.all([
+      animatePulse("w-a-xor1", c.a, 867),
+      animatePulse("w-a-and1", c.a, 867),
+      animatePulse("w-b-xor1", c.b, 867),
+      animatePulse("w-b-and1", c.b, 867)
+    ]);
+
+    // Activate Stage 1 wires
+    setWire("w-s1-xor2", s1 === 1); setWire("w-s1-and2", s1 === 1); setWire("j-s1", s1 === 1);
+    setWire("w-c1-or", c1 === 1);
+
+    // Calculate Stage 2 logic
+    const s2 = s1 ^ c.cin; // Sum
+    const c2 = s1 & c.cin;
+
+    // Stage 2: Wait for S1 & Cin to reach second gates, and C1 to reach OR gate
+    await Promise.all([
+      animatePulse("w-s1-xor2", s1, 867),
+      animatePulse("w-s1-and2", s1, 867),
+      animatePulse("w-cin-xor2", c.cin, 867),
+      animatePulse("w-cin-and2", c.cin, 867),
+      animatePulse("w-c1-or", c1, 867)
+    ]);
+
+    // Activate Stage 2 wires
+    setWire("w-sum", s2 === 1);
+    setWire("w-c2-or", c2 === 1);
+
+    const cout = c1 | c2;
+
+    // Stage 3: Wait for Sum to hit output port, and C2 to hit OR gate
+    await Promise.all([
+      animatePulse("w-sum", s2, 733),
+      animatePulse("w-c2-or", c2, 733)
+    ]);
+
+    setBadge("sum", s2);
+    setWire("w-cout", cout === 1);
+
+    // Stage 4: Wait for Cout to hit output port
+    await Promise.all([
+      animatePulse("w-cout", cout, 500)
+    ]);
+    
+    setBadge("cout", cout);
+    document.getElementById("math-banner").textContent = c.text;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1200); 
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext();
+    else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    await runCase(0);
+    scheduleNext();
+  });
+</script>
+</body>
+</html>

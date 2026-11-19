@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Main Control Unit FSM — 4-Stage Cycle</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #CBD5E1; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1200px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .arc { fill: none; stroke: #94A3B8; stroke-width: 3.5; stroke-linecap: round; }
+  .arc.active { stroke: #10B981; }
+  .state-node { fill: var(--surface); stroke: var(--border); stroke-width: 3; transition: all 0.25s ease; }
+  .state-node.active { fill: #ECFDF5; stroke: #10B981; stroke-width: 4; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 12px; font-weight: 800; padding: 10px 4px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 11px 4px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>Main Control Unit FSM (main_fsm) — State Transitions</h1>
+      <div class="equation-badge">S_FETCH (00) &rarr; S_DECODE (01) &rarr; S_EXECUTE (10) &rarr; S_WRITEBACK (11)</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 640 350">
+          <!-- Transition Arcs -->
+          <path id="arc-0" class="arc" d="M 210 95 L 410 95" />
+          <path id="arc-1" class="arc" d="M 465 150 L 465 235" />
+          <path id="arc-2" class="arc" d="M 410 285 L 210 285" />
+          <path id="arc-3" class="arc" d="M 155 235 L 155 150" />
+
+          <!-- State Nodes -->
+          <g id="st-0">
+            <rect id="box-0" class="state-node active" x="85" y="55" width="140" height="80" rx="40" />
+            <text x="155" y="88" font-size="15" font-weight="800" text-anchor="middle">S_FETCH</text>
+            <text x="155" y="110" font-family="monospace" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">state="00"</text>
+          </g>
+          <g id="st-1">
+            <rect id="box-1" class="state-node" x="395" y="55" width="140" height="80" rx="40" />
+            <text x="465" y="88" font-size="15" font-weight="800" text-anchor="middle">S_DECODE</text>
+            <text x="465" y="110" font-family="monospace" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">state="01"</text>
+          </g>
+          <g id="st-2">
+            <rect id="box-2" class="state-node" x="395" y="245" width="140" height="80" rx="40" />
+            <text x="465" y="278" font-size="15" font-weight="800" text-anchor="middle">S_EXECUTE</text>
+            <text x="465" y="300" font-family="monospace" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">state="10"</text>
+          </g>
+          <g id="st-3">
+            <rect id="box-3" class="state-node" x="85" y="245" width="140" height="80" rx="40" />
+            <text x="155" y="278" font-size="15" font-weight="800" text-anchor="middle">S_WRITEBACK</text>
+            <text x="155" y="300" font-family="monospace" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">state="11"</text>
+          </g>
+
+          <!-- Center Active Strobe Readout -->
+          <rect x="215" y="155" width="190" height="70" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2" />
+          <text x="310" y="178" font-size="12" font-weight="800" fill="#475569" text-anchor="middle">ACTIVE STROBES</text>
+          <text id="strobe-txt" x="310" y="203" font-family="monospace" font-size="15" font-weight="800" fill="#10B981" text-anchor="middle">None (Fetch ROM)</text>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">Control Output Truth Table (R-Type ADD Example)</div>
+        <table>
+          <thead><tr><th>State</th><th>state_dbg</th><th>flag_we</th><th>reg_we</th><th>mem_we</th><th>pc_inc</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>S_FETCH</td><td>00</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr id="row-1"><td>S_DECODE</td><td>01</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr id="row-2"><td>S_EXECUTE</td><td>10</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr id="row-3"><td>S_WRITEBACK</td><td>11</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Stage 0: S_FETCH</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next State &rarr;</button>
+  </div>
+
+<script>
+  const states = [
+    { idx: 0, arc: "arc-0", strobe: "ROM Read (00)", text: "S_FETCH (00): Present PC to Instruction ROM, all write strobes 0" },
+    { idx: 1, arc: "arc-1", strobe: "Slice & Read Regs", text: "S_DECODE (01): Instruction Decoder slices Opcode, RD, RS, and IMM8" },
+    { idx: 2, arc: "arc-2", strobe: "flag_we = 1", text: "S_EXECUTE (10): ALU computes result; flag_we='1' latches Z, C, N, V" },
+    { idx: 3, arc: "arc-3", strobe: "reg_we=1, pc_inc=1", text: "S_WRITEBACK (11): Save result to Register File (reg_we=1) & advance PC (pc_inc=1)" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", "#10B981");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const s = states[idx];
+
+    for (let i = 0; i < 4; i++) {
+      document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+      document.getElementById(`box-${i}`).classList.toggle("active", i === idx);
+      document.getElementById(`arc-${i}`).classList.remove("active");
+    }
+
+    document.getElementById("strobe-txt").textContent = s.strobe;
+    document.getElementById("banner").textContent = s.text;
+
+    await new Promise(r => setTimeout(r, 700));
+    if (token !== runToken) return;
+    document.getElementById(s.arc).classList.add("active");
+    await animatePulse(s.arc, 650, token);
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % states.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 900);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % states.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Half Adder Truth Table & Signal Flow</title>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F8FAFC;
+    --border: #1E293B;
+    --wire-off: #94A3B8;
+    --wire-on: #10B981;
+    --bit-zero: #64748B;
+    --bit-one: #10B981;
+    --text: #0F172A;
+    --muted: #475569;
+    --highlight-row: #ECFDF5;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .slide-stage {
+    width: 1080px;
+    max-width: 100%;
+    background: var(--bg);
+    padding: 32px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #E2E8F0;
+    padding-bottom: 14px;
+  }
+
+  .header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .equation-badge {
+    background: var(--surface);
+    border: 1.5px solid #CBD5E1;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.45fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .schematic-card {
+    background: var(--bg);
+    border: 2px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+  }
+
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+
+  .wire {
+    fill: none;
+    stroke: var(--wire-off);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.3s ease;
+  }
+
+  .wire.high {
+    stroke: var(--wire-on);
+  }
+
+  .junction-dot {
+    fill: var(--wire-off);
+    transition: fill 0.3s ease;
+  }
+
+  .junction-dot.high {
+    fill: var(--wire-on);
+  }
+
+  .gate-box {
+    fill: var(--surface);
+    stroke: var(--border);
+    stroke-width: 2.8;
+  }
+
+  .gate-label {
+    font-size: 17px;
+    font-weight: 800;
+    fill: var(--text);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .port-label {
+    font-size: 18px;
+    font-weight: 800;
+    fill: var(--text);
+    dominant-baseline: central;
+  }
+
+  .bit-circle {
+    transition: fill 0.25s ease;
+    stroke: #FFFFFF;
+    stroke-width: 2;
+  }
+
+  .bit-text {
+    font-size: 15px;
+    font-weight: 800;
+    fill: #FFFFFF;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .table-card {
+    background: var(--surface);
+    border: 2px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .table-title {
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #FFFFFF;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1.5px solid #CBD5E1;
+  }
+
+  th {
+    background: #F1F5F9;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 2px solid #CBD5E1;
+  }
+
+  td {
+    padding: 13px 10px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    border-bottom: 1px solid #E2E8F0;
+    transition: background-color 0.25s ease;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr.active-row {
+    background-color: var(--highlight-row);
+  }
+
+  tr.active-row td:first-child {
+    box-shadow: inset 4px 0 0 var(--bit-one);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .pill-0 { background: var(--bit-zero); }
+  .pill-1 { background: var(--bit-one); }
+
+  .status-banner {
+    margin-top: 14px;
+    background: #FFFFFF;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    opacity: 0.45;
+    transition: opacity 0.2s;
+  }
+  .controls:hover { opacity: 1; }
+
+  button {
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #E2E8F0; }
+</style>
+</head>
+<body>
+
+  <div class="slide-stage" id="captureArea">
+    <div class="header">
+      <h1>Half Adder — Signal Propagation &amp; Truth Table</h1>
+      <div class="equation-badge">Sum = A &oplus; B &nbsp;|&nbsp; Carry = A &middot; B</div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Left: Animated Logic Diagram -->
+      <div class="schematic-card">
+        <svg viewBox="0 0 560 320" id="circuitSvg">
+          <!-- Static Orthogonal Wires (Adjusted to meet the new curved gates) -->
+          <path id="w-a-xor" class="wire" d="M 75 85 L 245 85" />
+          <path id="w-a-and" class="wire" d="M 145 85 L 145 215 L 240 215" />
+          <circle id="j-a" class="junction-dot" cx="145" cy="85" r="5" />
+
+          <path id="w-b-and" class="wire" d="M 75 245 L 240 245" />
+          <path id="w-b-xor" class="wire" d="M 185 245 L 185 115 L 245 115" />
+          <circle id="j-b" class="junction-dot" cx="185" cy="245" r="5" />
+
+          <!-- Outputs from Gates -->
+          <path id="w-sum" class="wire" d="M 355 100 L 485 100" />
+          <path id="w-carry" class="wire" d="M 355 230 L 485 230" />
+
+          <!-- Logic Gate Blocks (IEEE Shapes) -->
+          <!-- XOR Gate -->
+          <path d="M 235 65 Q 260 100 235 135" fill="none" stroke="var(--border)" stroke-width="3" />
+          <path class="gate-box" d="M 247 65 Q 315 65 355 100 Q 315 135 247 135 Q 272 100 247 65 Z" />
+          <text class="gate-label" x="290" y="100">XOR</text>
+
+          <!-- AND Gate -->
+          <path class="gate-box" d="M 240 195 L 320 195 A 35 35 0 0 1 320 265 L 240 265 Z" />
+          <text class="gate-label" x="290" y="230">AND</text>
+
+          <!-- Port Names -->
+          <text class="port-label" x="22" y="85">A</text>
+          <text class="port-label" x="22" y="245">B</text>
+          <text class="port-label" x="512" y="100">Sum</text>
+          <text class="port-label" x="512" y="230">Carry</text>
+
+          <!-- Input Bit Badges -->
+          <g id="badge-a" transform="translate(75, 85)">
+            <circle id="c-a" class="bit-circle" r="16" fill="#64748B" />
+            <text id="t-a" class="bit-text">0</text>
+          </g>
+          <g id="badge-b" transform="translate(75, 245)">
+            <circle id="c-b" class="bit-circle" r="16" fill="#64748B" />
+            <text id="t-b" class="bit-text">0</text>
+          </g>
+
+          <!-- Output Bit Badges -->
+          <g id="badge-sum" transform="translate(485, 100)">
+            <circle id="c-sum" class="bit-circle" r="16" fill="#64748B" />
+            <text id="t-sum" class="bit-text">0</text>
+          </g>
+          <g id="badge-carry" transform="translate(485, 230)">
+            <circle id="c-carry" class="bit-circle" r="16" fill="#64748B" />
+            <text id="t-carry" class="bit-text">0</text>
+          </g>
+
+          <!-- Layer for Traveling Signal Pulses -->
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <!-- Right: Live Truth Table -->
+      <div class="table-card">
+        <div class="table-title">Truth Table (All 4 Cases)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>Carry</th>
+              <th>Sum</th>
+            </tr>
+          </thead>
+          <tbody id="tt-body">
+            <tr id="row-0">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+            <tr id="row-1">
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+            <tr id="row-2">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-0">0</span></td>
+              <td><span class="pill pill-1">1</span></td>
+            </tr>
+            <tr id="row-3">
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-1">1</span></td>
+              <td><span class="pill pill-0">0</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="math-banner">0 + 0 = 00₂ (Carry: 0, Sum: 0)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Case &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { a: 0, b: 0, sum: 0, carry: 0, text: "0 + 0 = 00₂  (Carry: 0, Sum: 0)" },
+    { a: 0, b: 1, sum: 1, carry: 0, text: "0 + 1 = 01₂  (Carry: 0, Sum: 1)" },
+    { a: 1, b: 0, sum: 1, carry: 0, text: "1 + 0 = 01₂  (Carry: 0, Sum: 1)" },
+    { a: 1, b: 1, sum: 0, carry: 1, text: "1 + 1 = 10₂  (Carry: 1, Sum: 0)" }
+  ];
+
+  const COLOR_ONE = "#10B981";
+  const COLOR_ZERO = "#64748B";
+
+  let currentIdx = 0;
+  let isPlaying = true;
+  let timer = null;
+
+  function setBadge(prefix, val) {
+    const circle = document.getElementById(`c-${prefix}`);
+    const text = document.getElementById(`t-${prefix}`);
+    circle.setAttribute("fill", val === 1 ? COLOR_ONE : COLOR_ZERO);
+    text.textContent = val;
+  }
+
+  function setWire(id, isHigh) {
+    const el = document.getElementById(id);
+    if (isHigh) el.classList.add("high");
+    else el.classList.remove("high");
+  }
+
+  function animatePulse(pathId, val, durationMs) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      const totalLen = path.getTotalLength();
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "12");
+      circle.setAttribute("fill", val === 1 ? COLOR_ONE : COLOR_ZERO);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("class", "bit-text");
+      txt.setAttribute("font-size", "12");
+      txt.textContent = val;
+
+      g.appendChild(circle);
+      g.appendChild(txt);
+      layer.appendChild(g);
+
+      const start = performance.now();
+      function frame(now) {
+        const progress = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(progress * totalLen);
+        g.setAttribute("transform", `translate(${pt.x}, ${pt.y})`);
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          layer.removeChild(g);
+          resolve();
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const c = cases[idx];
+
+    for (let i = 0; i < 4; i++) {
+      document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+    }
+
+    setWire("w-sum", false);
+    setWire("w-carry", false);
+    document.getElementById("c-sum").setAttribute("fill", "#CBD5E1");
+    document.getElementById("t-sum").textContent = "?";
+    document.getElementById("c-carry").setAttribute("fill", "#CBD5E1");
+    document.getElementById("t-carry").textContent = "?";
+
+    setBadge("a", c.a);
+    setBadge("b", c.b);
+    setWire("w-a-xor", c.a === 1);
+    setWire("w-a-and", c.a === 1);
+    setWire("j-a", c.a === 1);
+
+    setWire("w-b-and", c.b === 1);
+    setWire("w-b-xor", c.b === 1);
+    setWire("j-b", c.b === 1);
+
+    document.getElementById("math-banner").textContent = `Inputs: A = ${c.a}, B = ${c.b} → Evaluating...`;
+
+    // Stage 1: Animation speed slowed by 25% (time increased from 650ms to 867ms)
+    await Promise.all([
+      animatePulse("w-a-xor", c.a, 867),
+      animatePulse("w-a-and", c.a, 867),
+      animatePulse("w-b-xor", c.b, 867),
+      animatePulse("w-b-and", c.b, 867)
+    ]);
+
+    setWire("w-sum", c.sum === 1);
+    setWire("w-carry", c.carry === 1);
+
+    // Stage 2: Animation speed slowed by 25% (time increased from 550ms to 733ms)
+    await Promise.all([
+      animatePulse("w-sum", c.sum, 733),
+      animatePulse("w-carry", c.carry, 733)
+    ]);
+
+    setBadge("sum", c.sum);
+    setBadge("carry", c.carry);
+    document.getElementById("math-banner").textContent = c.text;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1400); 
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext();
+    else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    await runCase(0);
+    scheduleNext();
+  });
+</script>
+</body>
+</html>

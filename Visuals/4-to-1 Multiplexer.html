@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>4-to-1 Multiplexer Data Routing</title>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F8FAFC;
+    --border: #1E293B;
+    --wire-off: #94A3B8;
+    --wire-on: #10B981;
+    --bit-zero: #64748B;
+    --bit-one: #10B981;
+    --text: #0F172A;
+    --muted: #475569;
+    --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1080px; max-width: 100%; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; position: relative; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; opacity: 0.3; }
+  .wire.active { opacity: 1; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; }
+  .gate-label { font-size: 18px; font-weight: 800; fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+  .port-label { font-size: 18px; font-weight: 800; fill: var(--text); dominant-baseline: central; }
+  .bit-circle { transition: fill 0.25s ease; stroke: #FFFFFF; stroke-width: 2; }
+  .bit-text { font-size: 15px; font-weight: 800; fill: #FFFFFF; text-anchor: middle; dominant-baseline: central; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 14px; font-weight: 800; padding: 12px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 12px; font-size: 16px; font-weight: 700; border-bottom: 1px solid #E2E8F0; }
+  tr.active-row { background-color: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 var(--bit-one); }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-weight: 700; }
+  .controls { margin-top: 20px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>4-to-1 Multiplexer — Data Routing</h1>
+      <div class="equation-badge">Y = D(Select)</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 560 320" id="circuitSvg">
+          <!-- MUX Trapezoid -->
+          <polygon points="250,40 370,100 370,220 250,280" class="gate-box" />
+          <text class="gate-label" x="310" y="160">MUX</text>
+          
+          <!-- Input Wires -->
+          <path id="w-d3" class="wire active" d="M 75 70 L 250 70" />
+          <path id="w-d2" class="wire active" d="M 75 130 L 250 130" />
+          <path id="w-d1" class="wire active" d="M 75 190 L 250 190" />
+          <path id="w-d0" class="wire active" d="M 75 250 L 250 250" />
+          
+          <!-- Select Wires -->
+          <path id="w-s1" class="wire active" d="M 280 320 L 280 262" />
+          <path id="w-s0" class="wire active" d="M 340 320 L 340 238" />
+          
+          <!-- Output Wire -->
+          <path id="w-y" class="wire active" d="M 370 160 L 485 160" />
+
+          <!-- Internal Routing Path (Dynamic) -->
+          <path id="w-internal" class="wire" d="M 250 250 L 370 160" stroke-width="4" stroke-dasharray="6,4" />
+
+          <!-- Labels -->
+          <text class="port-label" x="22" y="70">D3</text>
+          <text class="port-label" x="22" y="130">D2</text>
+          <text class="port-label" x="22" y="190">D1</text>
+          <text class="port-label" x="22" y="250">D0</text>
+          <text class="port-label" x="268" y="335">S1</text>
+          <text class="port-label" x="328" y="335">S0</text>
+          <text class="port-label" x="515" y="160">Y</text>
+
+          <!-- Badges -->
+          <g transform="translate(75, 70)"><circle id="c-d3" class="bit-circle" r="14"/><text id="t-d3" class="bit-text">1</text></g>
+          <g transform="translate(75, 130)"><circle id="c-d2" class="bit-circle" r="14"/><text id="t-d2" class="bit-text">0</text></g>
+          <g transform="translate(75, 190)"><circle id="c-d1" class="bit-circle" r="14"/><text id="t-d1" class="bit-text">1</text></g>
+          <g transform="translate(75, 250)"><circle id="c-d0" class="bit-circle" r="14"/><text id="t-d0" class="bit-text">0</text></g>
+          
+          <g transform="translate(280, 310)"><circle id="c-s1" class="bit-circle" r="12"/><text id="t-s1" class="bit-text" font-size="11">0</text></g>
+          <g transform="translate(340, 310)"><circle id="c-s0" class="bit-circle" r="12"/><text id="t-s0" class="bit-text" font-size="11">0</text></g>
+          
+          <g transform="translate(485, 160)"><circle id="c-y" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-y" class="bit-text">?</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <table>
+          <thead><tr><th>S1</th><th>S0</th><th>Selected Input</th><th>Output (Y)</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>0</td><td>0</td><td>D0</td><td id="tbl-y0">0</td></tr>
+            <tr id="row-1"><td>0</td><td>1</td><td>D1</td><td id="tbl-y1">1</td></tr>
+            <tr id="row-2"><td>1</td><td>0</td><td>D2</td><td id="tbl-y2">0</td></tr>
+            <tr id="row-3"><td>1</td><td>1</td><td>D3</td><td id="tbl-y3">1</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Select: 00 &rarr; Routing D0</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls"><button onclick="togglePlay()" id="playBtn">Pause</button></div>
+
+<script>
+  // D inputs matching your testbench: D3=1, D2=0, D1=1, D0=0
+  const D = [0, 1, 0, 1]; // Index matches D0..D3
+  const yPos = [250, 190, 130, 70]; // SVG Y-coordinates for D0..D3
+  
+  const cases = [
+    { s1:0, s0:0, selIdx: 0, text: "Select: 00 → Routing D0 to Y" },
+    { s1:0, s0:1, selIdx: 1, text: "Select: 01 → Routing D1 to Y" },
+    { s1:1, s0:0, selIdx: 2, text: "Select: 10 → Routing D2 to Y" },
+    { s1:1, s0:1, selIdx: 3, text: "Select: 11 → Routing D3 to Y" }
+  ];
+
+  let currentIdx = 0;
+  let isPlaying = true;
+  let timer = null;
+
+  function setBadge(id, val, colorVal = val) {
+    document.getElementById(`c-${id}`).setAttribute("fill", colorVal === 1 ? "#10B981" : "#64748B");
+    document.getElementById(`t-${id}`).textContent = val;
+    const wire = document.getElementById(`w-${id}`);
+    if (wire) {
+      if (colorVal === 1) wire.classList.add("high");
+      else wire.classList.remove("high");
+    }
+  }
+
+  function animatePulse(pathId, val, durationMs) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      const totalLen = path.getTotalLength();
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "12");
+      circle.setAttribute("fill", val === 1 ? "#10B981" : "#64748B");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      g.appendChild(circle);
+      layer.appendChild(g);
+
+      const start = performance.now();
+      function frame(now) {
+        const progress = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(progress * totalLen);
+        g.setAttribute("transform", `translate(${pt.x}, ${pt.y})`);
+        if (progress < 1) requestAnimationFrame(frame);
+        else { layer.removeChild(g); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const c = cases[idx];
+    const outVal = D[c.selIdx];
+
+    [0,1,2,3].forEach(i => document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx));
+    
+    setBadge("s1", c.s1); setBadge("s0", c.s0);
+    document.getElementById("c-y").setAttribute("fill", "#CBD5E1");
+    document.getElementById("t-y").textContent = "?";
+    document.getElementById("w-y").classList.remove("high");
+    document.getElementById("banner").textContent = `Switching Select to ${c.s1}${c.s0}...`;
+
+    // Draw dynamic internal routing line
+    const intWire = document.getElementById("w-internal");
+    intWire.setAttribute("d", `M 250 ${yPos[c.selIdx]} L 370 160`);
+    if (outVal === 1) intWire.classList.add("high");
+    else intWire.classList.remove("high");
+    intWire.classList.add("active");
+
+    await animatePulse("w-internal", outVal, 600);
+    
+    document.getElementById("w-y").classList.toggle("high", outVal === 1);
+    await animatePulse("w-y", outVal, 400);
+
+    setBadge("y", outVal);
+    document.getElementById("banner").textContent = c.text;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1200);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext();
+    else clearTimeout(timer);
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    D.forEach((val, i) => setBadge(`d${i}`, val));
+    await runCase(0);
+    scheduleNext();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>4-Bit Ripple Carry Adder</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1200px; max-width: 100%; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .schematic-card { border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; position: relative; background: var(--bg); }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .gate-label { font-size: 16px; font-weight: 800; fill: var(--text); text-anchor: middle; }
+  .port-label { font-size: 16px; font-weight: 800; fill: var(--text); }
+  .bit-circle { transition: fill 0.25s ease; stroke: #FFFFFF; stroke-width: 2; }
+  .bit-text { font-size: 14px; font-weight: 800; fill: #FFFFFF; text-anchor: middle; dominant-baseline: central; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 16px; text-align: center; font-size: 18px; font-weight: 700; }
+  .controls { margin-top: 20px; background: var(--surface); padding: 16px; border-radius: 12px; border: 1px solid #CBD5E1; width: 1200px; max-width: 100%; }
+  .controls-header { font-weight: 800; margin-bottom: 10px; font-size: 14px; color: var(--muted); }
+  .chk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  label { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .btn-row { margin-top: 16px; display: flex; gap: 10px; }
+  button { background: #E2E8F0; border: 1px solid #CBD5E1; padding: 6px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>4-Bit Ripple Carry Adder — Signal Propagation</h1>
+      <div class="equation-badge">Sum = A + B + Cin</div>
+    </div>
+    
+    <div class="schematic-card">
+      <svg viewBox="0 0 1000 360" id="circuitSvg">
+        <!-- FA Blocks (Right to Left: FA0 to FA3) -->
+        <rect x="740" y="140" width="100" height="100" class="gate-box" />
+        <text class="gate-label" x="790" y="195">FA 0</text>
+        
+        <rect x="540" y="140" width="100" height="100" class="gate-box" />
+        <text class="gate-label" x="590" y="195">FA 1</text>
+        
+        <rect x="340" y="140" width="100" height="100" class="gate-box" />
+        <text class="gate-label" x="390" y="195">FA 2</text>
+        
+        <rect x="140" y="140" width="100" height="100" class="gate-box" />
+        <text class="gate-label" x="190" y="195">FA 3</text>
+
+        <!-- A and B Input Wires (Drop down into FAs) -->
+        <!-- FA0 -->
+        <path id="w-a0" class="wire" d="M 770 60 L 770 140" />
+        <path id="w-b0" class="wire" d="M 810 60 L 810 140" />
+        <!-- FA1 -->
+        <path id="w-a1" class="wire" d="M 570 60 L 570 140" />
+        <path id="w-b1" class="wire" d="M 610 60 L 610 140" />
+        <!-- FA2 -->
+        <path id="w-a2" class="wire" d="M 370 60 L 370 140" />
+        <path id="w-b2" class="wire" d="M 410 60 L 410 140" />
+        <!-- FA3 -->
+        <path id="w-a3" class="wire" d="M 170 60 L 170 140" />
+        <path id="w-b3" class="wire" d="M 210 60 L 210 140" />
+
+        <!-- Ripple Carry Wires (Right to left) -->
+        <path id="w-cin" class="wire" d="M 940 190 L 840 190" />
+        <path id="w-c1" class="wire" d="M 740 190 L 640 190" />
+        <path id="w-c2" class="wire" d="M 540 190 L 440 190" />
+        <path id="w-c3" class="wire" d="M 340 190 L 240 190" />
+        <path id="w-cout" class="wire" d="M 140 190 L 40 190" />
+
+        <!-- Sum Output Wires (Drop down) -->
+        <path id="w-s0" class="wire" d="M 790 240 L 790 320" />
+        <path id="w-s1" class="wire" d="M 590 240 L 590 320" />
+        <path id="w-s2" class="wire" d="M 390 240 L 390 320" />
+        <path id="w-s3" class="wire" d="M 190 240 L 190 320" />
+
+        <!-- Labels -->
+        <text class="port-label" x="910" y="170">Cin</text>
+        <text class="port-label" x="45" y="170">Cout</text>
+        
+        <text class="port-label" x="760" y="25">A0</text><text class="port-label" x="800" y="25">B0</text>
+        <text class="port-label" x="560" y="25">A1</text><text class="port-label" x="600" y="25">B1</text>
+        <text class="port-label" x="360" y="25">A2</text><text class="port-label" x="400" y="25">B2</text>
+        <text class="port-label" x="160" y="25">A3</text><text class="port-label" x="200" y="25">B3</text>
+
+        <text class="port-label" x="775" y="350">S0</text>
+        <text class="port-label" x="575" y="350">S1</text>
+        <text class="port-label" x="375" y="350">S2</text>
+        <text class="port-label" x="175" y="350">S3</text>
+
+        <!-- Input Badges -->
+        <g transform="translate(770, 60)"><circle id="c-a0" class="bit-circle" r="14"/><text id="t-a0" class="bit-text">0</text></g>
+        <g transform="translate(810, 60)"><circle id="c-b0" class="bit-circle" r="14"/><text id="t-b0" class="bit-text">0</text></g>
+        <g transform="translate(570, 60)"><circle id="c-a1" class="bit-circle" r="14"/><text id="t-a1" class="bit-text">0</text></g>
+        <g transform="translate(610, 60)"><circle id="c-b1" class="bit-circle" r="14"/><text id="t-b1" class="bit-text">0</text></g>
+        <g transform="translate(370, 60)"><circle id="c-a2" class="bit-circle" r="14"/><text id="t-a2" class="bit-text">0</text></g>
+        <g transform="translate(410, 60)"><circle id="c-b2" class="bit-circle" r="14"/><text id="t-b2" class="bit-text">0</text></g>
+        <g transform="translate(170, 60)"><circle id="c-a3" class="bit-circle" r="14"/><text id="t-a3" class="bit-text">0</text></g>
+        <g transform="translate(210, 60)"><circle id="c-b3" class="bit-circle" r="14"/><text id="t-b3" class="bit-text">0</text></g>
+        
+        <g transform="translate(940, 190)"><circle id="c-cin" class="bit-circle" r="14"/><text id="t-cin" class="bit-text">0</text></g>
+
+        <!-- Output Badges -->
+        <g transform="translate(790, 320)"><circle id="c-s0" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-s0" class="bit-text">?</text></g>
+        <g transform="translate(590, 320)"><circle id="c-s1" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-s1" class="bit-text">?</text></g>
+        <g transform="translate(390, 320)"><circle id="c-s2" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-s2" class="bit-text">?</text></g>
+        <g transform="translate(190, 320)"><circle id="c-s3" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-s3" class="bit-text">?</text></g>
+        
+        <g transform="translate(40, 190)"><circle id="c-cout" class="bit-circle" r="16" fill="#CBD5E1"/><text id="t-cout" class="bit-text">?</text></g>
+
+        <g id="pulse-layer"></g>
+      </svg>
+    </div>
+    <div class="status-banner" id="banner">Initializing Data Flow...</div>
+  </div>
+
+  <div class="controls">
+    <div class="controls-header">SELECT TEST CASES TO PLAY IN RECORDING LOOP:</div>
+    <div class="chk-grid" id="chk-container"></div>
+    <div class="btn-row">
+      <button onclick="togglePlay()" id="playBtn">Pause Animation</button>
+      <button onclick="nextStep()">Force Next Case</button>
+    </div>
+  </div>
+
+<script>
+  const allCases = [
+    { a: 0, b: 0, cin: 0, lbl: "0 + 0 + 0 = 0 (No Carry)" },
+    { a: 3, b: 5, cin: 0, lbl: "3 + 5 + 0 = 8 (tb_ripple_carry Case 1)" },
+    { a: 7, b: 2, cin: 0, lbl: "7 + 2 + 0 = 9 (Standard Ripple)" },
+    { a: 15, b: 1, cin: 0, lbl: "15 + 1 + 0 = 16 (tb_ripple_carry Case 2 - Overflow)" },
+    { a: 10, b: 10, cin: 0, lbl: "10 + 10 + 0 = 20 (Carry Propagation)" },
+    { a: 15, b: 15, cin: 1, lbl: "15 + 15 + 1 = 31 (tb_ripple_carry Case 3 - Max)" }
+  ];
+
+  const chkContainer = document.getElementById("chk-container");
+  allCases.forEach((c, idx) => {
+    chkContainer.innerHTML += `<label><input type="checkbox" id="chk-${idx}" class="case-chk" checked> ${c.lbl}</label>`;
+  });
+
+  let currentIdx = 0;
+  let isPlaying = true;
+  let timer = null;
+  let activeCases = [];
+
+  function updateActiveCases() {
+    activeCases = allCases.filter((_, i) => document.getElementById(`chk-${i}`).checked);
+    if(activeCases.length === 0) activeCases = [allCases[0]]; 
+  }
+
+  function getBit(val, pos) { return (val >> pos) & 1; }
+
+  // FIX: Added null safety checks so it doesn't crash on internal carry wires that lack text badges
+  function setBadge(id, val) {
+    const circle = document.getElementById(`c-${id}`);
+    if (circle) circle.setAttribute("fill", val === 1 ? "#10B981" : "#64748B");
+    
+    const text = document.getElementById(`t-${id}`);
+    if (text) text.textContent = val;
+    
+    const wire = document.getElementById(`w-${id}`);
+    if (wire) {
+      if (val === 1) wire.classList.add("high");
+      else wire.classList.remove("high");
+    }
+  }
+
+  function resetOutput(id) {
+    const circle = document.getElementById(`c-${id}`);
+    if (circle) circle.setAttribute("fill", "#CBD5E1");
+    
+    const text = document.getElementById(`t-${id}`);
+    if (text) text.textContent = "?";
+    
+    const wire = document.getElementById(`w-${id}`);
+    if (wire) wire.classList.remove("high");
+  }
+
+  function animatePulse(pathId, val, durationMs) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      const totalLen = path.getTotalLength();
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", val === 1 ? "#10B981" : "#64748B");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      g.appendChild(circle);
+      layer.appendChild(g);
+
+      const start = performance.now();
+      function frame(now) {
+        const progress = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(progress * totalLen);
+        g.setAttribute("transform", `translate(${pt.x}, ${pt.y})`);
+        if (progress < 1) requestAnimationFrame(frame);
+        else { layer.removeChild(g); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase() {
+    updateActiveCases();
+    if(currentIdx >= activeCases.length) currentIdx = 0;
+    const c = activeCases[currentIdx];
+
+    const a0 = getBit(c.a,0), a1 = getBit(c.a,1), a2 = getBit(c.a,2), a3 = getBit(c.a,3);
+    const b0 = getBit(c.b,0), b1 = getBit(c.b,1), b2 = getBit(c.b,2), b3 = getBit(c.b,3);
+    
+    ['s0','s1','s2','s3','cout','c1','c2','c3'].forEach(resetOutput);
+    
+    setBadge("a0",a0); setBadge("b0",b0);
+    setBadge("a1",a1); setBadge("b1",b1);
+    setBadge("a2",a2); setBadge("b2",b2);
+    setBadge("a3",a3); setBadge("b3",b3);
+    setBadge("cin",c.cin);
+    
+    document.getElementById("banner").textContent = `Inputs Loaded: A=${c.a}, B=${c.b}, Cin=${c.cin}`;
+
+    await Promise.all([
+      animatePulse("w-a0",a0,600), animatePulse("w-b0",b0,600),
+      animatePulse("w-a1",a1,600), animatePulse("w-b1",b1,600),
+      animatePulse("w-a2",a2,600), animatePulse("w-b2",b2,600),
+      animatePulse("w-a3",a3,600), animatePulse("w-b3",b3,600)
+    ]);
+
+    const s0 = a0 ^ b0 ^ c.cin;
+    const c1 = (a0&b0) | (c.cin&(a0^b0));
+    await animatePulse("w-cin", c.cin, 500);
+    setBadge("c1", c1);
+    
+    const s1 = a1 ^ b1 ^ c1;
+    const c2 = (a1&b1) | (c1&(a1^b1));
+    await Promise.all([animatePulse("w-c1", c1, 500), animatePulse("w-s0", s0, 500)]);
+    setBadge("s0", s0); setBadge("c2", c2);
+
+    const s2 = a2 ^ b2 ^ c2;
+    const c3 = (a2&b2) | (c2&(a2^b2));
+    await Promise.all([animatePulse("w-c2", c2, 500), animatePulse("w-s1", s1, 500)]);
+    setBadge("s1", s1); setBadge("c3", c3);
+
+    const s3 = a3 ^ b3 ^ c3;
+    const cout = (a3&b3) | (c3&(a3^b3));
+    await Promise.all([animatePulse("w-c3", c3, 500), animatePulse("w-s2", s2, 500)]);
+    setBadge("s2", s2); setBadge("cout", cout);
+
+    await Promise.all([animatePulse("w-cout", cout, 500), animatePulse("w-s3", s3, 500)]);
+    setBadge("s3", s3); setBadge("cout", cout);
+    
+    const sumTotal = (s3<<3) | (s2<<2) | (s1<<1) | s0;
+    document.getElementById("banner").textContent = `Result: Sum = ${sumTotal}, Carry Out = ${cout}  (${c.lbl})`;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    timer = setTimeout(async () => {
+      currentIdx++;
+      await runCase();
+      scheduleNext();
+    }, 1800);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause Animation" : "Resume Animation";
+    if (isPlaying) scheduleNext();
+    else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx++;
+    await runCase();
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    await runCase();
+    scheduleNext();
+  });
+</script>
+</body>
+</html>

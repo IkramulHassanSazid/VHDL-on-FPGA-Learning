@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Combinational Instruction Decoder (instruction_decoder)</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1220px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 11px; font-weight: 800; padding: 9px 4px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 10px 4px; font-size: 12px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>Combinational Instruction Decoder (instruction_decoder)</h1>
+      <div class="equation-badge">[15:12] opcode &nbsp;|&nbsp; [11:9] rd_addr &nbsp;|&nbsp; [8:6] rs_addr &nbsp;|&nbsp; [7:0] imm8</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 650 360">
+          <!-- Input Wire -->
+          <path id="w-in" class="wire high" d="M 135 180 L 215 180" />
+
+          <!-- Sliced Field Wires -->
+          <path id="w-op" class="wire high" d="M 375 80 L 495 80" />
+          <path id="w-rd" class="wire high" d="M 375 125 L 495 125" />
+          <path id="w-rs" class="wire high" d="M 375 170 L 495 170" />
+          <path id="w-imm" class="wire high" d="M 375 215 L 495 215" />
+
+          <!-- Control Flag Bundle Wire -->
+          <path id="w-flags" class="wire high" d="M 375 285 L 495 285" />
+
+          <!-- Decoder Block -->
+          <rect x="215" y="50" width="160" height="265" class="gate-box" />
+          <text x="295" y="155" font-size="17" font-weight="800" text-anchor="middle">Instruction</text>
+          <text x="295" y="178" font-size="17" font-weight="800" text-anchor="middle">Decoder</text>
+          <text id="dec-asm" x="295" y="210" font-family="monospace" font-size="13" font-weight="800" fill="#10B981" text-anchor="middle">LDI R0, 0x0A</text>
+
+          <!-- Input Badge -->
+          <text x="15" y="150" font-size="14" font-weight="800">instr[15:0]</text>
+          <g transform="translate(15, 165)"><rect width="120" height="32" rx="6" fill="#1E293B"/><text id="t-in" x="60" y="16" fill="#FFF" font-family="monospace" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="central">0x800A</text></g>
+
+          <!-- Output Badges -->
+          <g transform="translate(495, 66)"><rect width="130" height="28" rx="6" fill="#3B82F6"/><text id="t-op" x="65" y="14" fill="#FFF" font-family="monospace" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">opcode: 1000</text></g>
+          <g transform="translate(495, 111)"><rect width="130" height="28" rx="6" fill="#1E293B"/><text id="t-rd" x="65" y="14" fill="#FFF" font-family="monospace" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">rd_addr: 000</text></g>
+          <g transform="translate(495, 156)"><rect width="130" height="28" rx="6" fill="#1E293B"/><text id="t-rs" x="65" y="14" fill="#FFF" font-family="monospace" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">rs_addr: 000</text></g>
+          <g transform="translate(495, 201)"><rect width="130" height="28" rx="6" fill="#1E293B"/><text id="t-imm" x="65" y="14" fill="#FFF" font-family="monospace" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">imm8: 0x0A</text></g>
+          <g transform="translate(495, 269)"><rect width="140" height="32" rx="6" fill="#10B981"/><text id="t-ctrl" x="70" y="16" fill="#FFF" font-family="monospace" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">imm=1, w_reg=1</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">Decoded Control Signals by Instruction Type</div>
+        <table>
+          <thead><tr><th>Instr</th><th>alu_imm</th><th>mem_reg</th><th>store</th><th>branch</th><th>w_reg</th><th>u_flag</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>LDI R0,10</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+            <tr id="row-1"><td>ADD R0,R1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+            <tr id="row-2"><td>LD R2,[10]</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+            <tr id="row-3"><td>ST R0,[10]</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr id="row-4"><td>BEQ 0x05</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Decoding LDI...</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Instruction &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { hex: "0x800A", asm: "LDI R0, 0x0A", op: "opcode: 1000", rd: "rd_addr: 000", rs: "rs_addr: 000", imm: "imm8: 0x0A", ctrl: "imm=1, w_reg=1", text: "I-Type (LDI): Routes imm8 to ALU B (alu_src_imm=1) & enables Register Write" },
+    { hex: "0x1040", asm: "ADD R0, R1",   op: "opcode: 0001", rd: "rd_addr: 000", rs: "rs_addr: 001", imm: "imm8: 0x00", ctrl: "w_reg=1, flag=1", text: "R-Type (ADD): Uses R0 & R1, writes ALU result to R0 (writes_reg=1, updates_flags=1)" },
+    { hex: "0xA410", asm: "LD R2, [0x10]",op: "opcode: 1010", rd: "rd_addr: 010", rs: "rs_addr: 000", imm: "imm8: 0x10", ctrl: "mem_reg=1, w_reg=1", text: "M-Type (LD): Selects RAM output (mem_to_reg=1) and writes into R2" },
+    { hex: "0xB010", asm: "ST R0, [0x10]",op: "opcode: 1011", rd: "rd_addr: 000", rs: "rs_addr: 000", imm: "imm8: 0x10", ctrl: "is_store=1", text: "M-Type (ST): Asserts is_store=1 so Main FSM writes R0 to RAM[0x10]" },
+    { hex: "0xE005", asm: "BEQ 0x05",     op: "opcode: 1110", rd: "rd_addr: 000", rs: "rs_addr: 000", imm: "imm8: 0x05", ctrl: "is_branch=1", text: "B-Type (BEQ): Asserts is_branch=1 and sends target address 0x05 to PC" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", "#10B981");
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < cases.length; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    document.getElementById("t-in").textContent = c.hex;
+    document.getElementById("dec-asm").textContent = c.asm;
+    document.getElementById("banner").textContent = c.text;
+
+    await animatePulse("w-in", 650, token);
+    if (token !== runToken) return;
+
+    await Promise.all([
+      animatePulse("w-op", 650, token),
+      animatePulse("w-rd", 650, token),
+      animatePulse("w-rs", 650, token),
+      animatePulse("w-imm", 650, token),
+      animatePulse("w-flags", 650, token)
+    ]);
+    if (token !== runToken) return;
+
+    document.getElementById("t-op").textContent = c.op;
+    document.getElementById("t-rd").textContent = c.rd;
+    document.getElementById("t-rs").textContent = c.rs;
+    document.getElementById("t-imm").textContent = c.imm;
+    document.getElementById("t-ctrl").textContent = c.ctrl;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1500);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

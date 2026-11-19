@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>8-Bit Register with Load Enable</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1160px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .gate-label { font-size: 17px; font-weight: 800; fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+  .port-label { font-size: 16px; font-weight: 800; fill: var(--text); dominant-baseline: central; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 13px; font-weight: 800; padding: 11px 6px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 11px 6px; font-size: 14px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>8-Bit Register (reg_8bit) — Parallel Load &amp; Hold</h1>
+      <div class="equation-badge">if rising_edge(clk) and load_en='1' &rarr; Q &lt;= D</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 620 330">
+          <!-- Wires -->
+          <path id="w-d" class="wire high" d="M 120 115 L 230 115" />
+          <path id="w-en" class="wire" d="M 120 175 L 230 175" />
+          <path id="w-clk" class="wire" d="M 120 235 L 230 235" />
+          <path id="w-rst" class="wire" d="M 310 45 L 310 80" />
+          <path id="w-q" class="wire high" d="M 390 175 L 500 175" />
+
+          <!-- Register Box -->
+          <rect x="230" y="80" width="160" height="190" class="gate-box" />
+          <polygon points="230,223 248,235 230,247" fill="none" stroke="#1E293B" stroke-width="2.5" />
+          <text class="gate-label" x="310" y="120">8-Bit Register</text>
+          <text x="242" y="175" font-size="12" font-weight="800" fill="#475569" dominant-baseline="central">EN</text>
+          <rect x="255" y="150" width="110" height="38" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+          <text id="reg-internal" x="310" y="169" font-family="monospace" font-size="14" font-weight="800" fill="#0F172A" text-anchor="middle" dominant-baseline="central">00000000</text>
+
+          <!-- Port Labels -->
+          <text class="port-label" x="15" y="90">D[7:0]</text>
+          <text class="port-label" x="15" y="175">load_en</text>
+          <text class="port-label" x="15" y="235">clk</text>
+          <text class="port-label" x="255" y="30">reset</text>
+          <text class="port-label" x="505" y="135">Q[7:0]</text>
+
+          <!-- Badges -->
+          <g transform="translate(30, 100)">
+            <rect id="c-d" width="90" height="30" rx="6" fill="#10B981"/>
+            <text id="t-d" x="45" y="15" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">10101010</text>
+          </g>
+          <g transform="translate(120, 175)"><circle id="c-en" r="14" fill="#64748B"/><text id="t-en" fill="#FFF" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+          <g transform="translate(120, 235)"><circle id="c-clk" r="14" fill="#64748B"/><text id="t-clk" fill="#FFF" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">↑</text></g>
+          <g transform="translate(310, 45)"><circle id="c-rst" r="14" fill="#64748B"/><text id="t-rst" fill="#FFF" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+
+          <g transform="translate(500, 160)">
+            <rect id="c-q" width="96" height="32" rx="6" fill="#64748B"/>
+            <text id="t-q" x="48" y="16" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">00000000</text>
+          </g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">Testbench Sequence (tb_reg_8bit.vhd)</div>
+        <table>
+          <thead><tr><th>reset</th><th>load_en</th><th>D[7:0]</th><th>Q[7:0]</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>1</td><td>0</td><td>00000000</td><td>00000000</td><td>Reset Clear</td></tr>
+            <tr id="row-1"><td>0</td><td>0</td><td>10101010</td><td>00000000</td><td>Blocked (EN=0)</td></tr>
+            <tr id="row-2"><td>0</td><td>1</td><td>10101010</td><td>10101010</td><td>Latched (EN=1)</td></tr>
+            <tr id="row-3"><td>0</td><td>0</td><td>11110000</td><td>10101010</td><td>Hold Old Byte</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Initializing...</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Case &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { rst: 1, en: 0, d: "00000000", qBefore: "00000000", qAfter: "00000000", text: "Step 1: reset=1 clears all 8 bits of Q to 00000000" },
+    { rst: 0, en: 0, d: "10101010", qBefore: "00000000", qAfter: "00000000", text: "Step 2: D=10101010 applied, but load_en=0 → Q stays 00000000" },
+    { rst: 0, en: 1, d: "10101010", qBefore: "00000000", qAfter: "10101010", text: "Step 3: load_en=1 + Rising Clock → Q captures 10101010 (0xAA)" },
+    { rst: 0, en: 0, d: "11110000", qBefore: "10101010", qAfter: "10101010", text: "Step 4: D changes to 11110000 with load_en=0 → Q safely holds 10101010" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, color, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", color);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < 4; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    document.getElementById("t-d").textContent = c.d;
+    document.getElementById("c-rst").setAttribute("fill", c.rst ? "#10B981" : "#64748B");
+    document.getElementById("t-rst").textContent = c.rst;
+    document.getElementById("w-rst").classList.toggle("high", c.rst === 1);
+
+    document.getElementById("c-en").setAttribute("fill", c.en ? "#10B981" : "#64748B");
+    document.getElementById("t-en").textContent = c.en;
+    document.getElementById("w-en").classList.toggle("high", c.en === 1);
+
+    document.getElementById("reg-internal").textContent = c.qBefore;
+    document.getElementById("t-q").textContent = c.qBefore;
+    document.getElementById("banner").textContent = c.text;
+
+    if (c.rst === 1) {
+      await animatePulse("w-rst", "#10B981", 750, token);
+    } else {
+      await Promise.all([
+        animatePulse("w-d", "#10B981", 750, token),
+        animatePulse("w-en", c.en ? "#10B981" : "#64748B", 750, token),
+        animatePulse("w-clk", "#3B82F6", 750, token)
+      ]);
+      if (token !== runToken) return;
+      if (c.en === 1) {
+        document.getElementById("reg-internal").textContent = c.qAfter;
+        await animatePulse("w-q", "#10B981", 650, token);
+      }
+    }
+    if (token !== runToken) return;
+    document.getElementById("t-q").textContent = c.qAfter;
+    document.getElementById("c-q").setAttribute("fill", c.qAfter === "00000000" ? "#64748B" : "#10B981");
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1500);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

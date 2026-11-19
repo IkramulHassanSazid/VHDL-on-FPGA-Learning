@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>8-Bit Program Counter (program_counter)</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1180px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; rx: 12; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 12px; font-weight: 800; padding: 10px 4px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 11px 4px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>Program Counter (program_counter) — Increment &amp; Branch Target Load</h1>
+      <div class="equation-badge">if pc_load='1' &rarr; PC &lt;= pc_in &nbsp;|&nbsp; elsif pc_inc='1' &rarr; PC &lt;= PC + 1</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 640 340">
+          <!-- Wires -->
+          <path id="w-pcin" class="wire" d="M 110 110 L 210 110" />
+          <path id="w-incpath" class="wire" d="M 480 165 L 480 295 L 150 295 L 150 190 L 210 190" />
+          <path id="w-mux-reg" class="wire high" d="M 275 150 L 330 150" />
+          <path id="w-load" class="wire" d="M 242 50 L 242 95" />
+          <path id="w-inc" class="wire" d="M 395 50 L 395 100" />
+          <path id="w-out" class="wire high" d="M 455 165 L 540 165" />
+
+          <!-- MUX Block -->
+          <polygon points="210,85 275,110 275,190 210,215" class="gate-box" />
+          <text x="242" y="150" font-size="14" font-weight="800" text-anchor="middle">MUX</text>
+
+          <!-- PC Register Block -->
+          <rect x="330" y="100" width="125" height="130" class="gate-box" />
+          <text x="392" y="135" font-size="16" font-weight="800" text-anchor="middle">PC Reg</text>
+          <rect x="350" y="155" width="85" height="34" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" />
+          <text id="pc-val" x="392" y="172" font-family="monospace" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="central">0x00</text>
+
+          <!-- +1 Badge on Feedback Loop -->
+          <rect x="270" y="277" width="60" height="34" rx="8" fill="#F8FAFC" stroke="#1E293B" stroke-width="2.5" />
+          <text x="300" y="294" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="central">+ 1</text>
+
+          <!-- Port Badges -->
+          <text x="15" y="85" font-size="15" font-weight="800">pc_in[7:0]</text>
+          <g transform="translate(20, 95)"><rect width="90" height="30" rx="6" fill="#1E293B"/><text id="t-pcin" x="45" y="15" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0x05</text></g>
+
+          <text x="180" y="30" font-size="14" font-weight="800">pc_load</text>
+          <g transform="translate(242, 50)"><circle id="c-load" r="13" fill="#64748B"/><text id="t-load" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+
+          <text x="340" y="30" font-size="14" font-weight="800">pc_inc</text>
+          <g transform="translate(395, 50)"><circle id="c-inc" r="13" fill="#64748B"/><text id="t-inc" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+
+          <text x="535" y="135" font-size="15" font-weight="800">pc_out[7:0]</text>
+          <g transform="translate(535, 150)"><rect width="85" height="32" rx="6" fill="#10B981"/><text id="t-out" x="42.5" y="16" fill="#FFF" font-family="monospace" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="central">0x00</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">PC Control Sequence</div>
+        <table>
+          <thead><tr><th>reset</th><th>pc_inc</th><th>pc_load</th><th>pc_in</th><th>pc_out</th><th>Operation</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>1</td><td>0</td><td>0</td><td>0x00</td><td>0x00</td><td>Reset to 0x00</td></tr>
+            <tr id="row-1"><td>0</td><td>1</td><td>0</td><td>0x00</td><td>0x01</td><td>Step PC + 1</td></tr>
+            <tr id="row-2"><td>0</td><td>1</td><td>0</td><td>0x00</td><td>0x02</td><td>Step PC + 1</td></tr>
+            <tr id="row-3"><td>0</td><td>0</td><td>1</td><td>0x05</td><td>0x05</td><td>Jump to 0x05</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Reset PC = 0x00</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Step &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { inc: 0, load: 0, pcin: "0x00", out: "0x00", text: "Reset Active: Program Counter initialized to ROM address 0x00" },
+    { inc: 1, load: 0, pcin: "0x00", out: "0x01", text: "Sequential Fetch (pc_inc=1): PC increments from 0x00 → 0x01" },
+    { inc: 1, load: 0, pcin: "0x00", out: "0x02", text: "Sequential Fetch (pc_inc=1): PC increments from 0x01 → 0x02" },
+    { inc: 0, load: 1, pcin: "0x05", out: "0x05", text: "Branch / Jump Taken (pc_load=1): Target address 0x05 loaded directly into PC" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function animatePulse(pathId, color, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", color);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < 4; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    document.getElementById("t-pcin").textContent = c.pcin;
+    document.getElementById("c-inc").setAttribute("fill", c.inc ? "#10B981" : "#64748B");
+    document.getElementById("t-inc").textContent = c.inc;
+    document.getElementById("w-inc").classList.toggle("high", c.inc === 1);
+
+    document.getElementById("c-load").setAttribute("fill", c.load ? "#10B981" : "#64748B");
+    document.getElementById("t-load").textContent = c.load;
+    document.getElementById("w-load").classList.toggle("high", c.load === 1);
+    document.getElementById("w-pcin").classList.toggle("high", c.load === 1);
+    document.getElementById("w-incpath").classList.toggle("high", c.inc === 1);
+
+    document.getElementById("banner").textContent = c.text;
+
+    if (c.load === 1) {
+      await Promise.all([
+        animatePulse("w-load", "#10B981", 650, token),
+        animatePulse("w-pcin", "#10B981", 650, token)
+      ]);
+    } else if (c.inc === 1) {
+      await Promise.all([
+        animatePulse("w-inc", "#10B981", 750, token),
+        animatePulse("w-incpath", "#10B981", 750, token)
+      ]);
+    }
+    if (token !== runToken) return;
+    await animatePulse("w-mux-reg", "#10B981", 500, token);
+    if (token !== runToken) return;
+    document.getElementById("pc-val").textContent = c.out;
+    await animatePulse("w-out", "#10B981", 500, token);
+    if (token !== runToken) return;
+    document.getElementById("t-out").textContent = c.out;
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1400);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>

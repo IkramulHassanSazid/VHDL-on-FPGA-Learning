@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>8-Bit ALU with Z, C, N, V Flags</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface: #F8FAFC; --border: #1E293B;
+    --wire-off: #94A3B8; --wire-on: #10B981;
+    --text: #0F172A; --muted: #475569; --highlight-row: #ECFDF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .slide-stage { width: 1220px; max-width: 100%; background: var(--bg); padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E2E8F0; padding-bottom: 14px; }
+  .header h1 { font-size: 26px; font-weight: 800; }
+  .equation-badge { background: var(--surface); border: 1.5px solid #CBD5E1; padding: 6px 14px; border-radius: 999px; font-family: monospace; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .main-grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 32px; align-items: center; }
+  .schematic-card { background: var(--bg); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .wire { fill: none; stroke: var(--wire-off); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+  .wire.high { stroke: var(--wire-on); }
+  .gate-box { fill: var(--surface); stroke: var(--border); stroke-width: 2.8; stroke-linejoin: round; }
+  .gate-label { font-size: 19px; font-weight: 800; fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+  .port-label { font-size: 15px; font-weight: 800; fill: var(--text); dominant-baseline: central; }
+  .table-card { background: var(--surface); border: 2px solid #E2E8F0; border-radius: 16px; padding: 20px; }
+  .table-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #FFFFFF; border-radius: 10px; overflow: hidden; border: 1.5px solid #CBD5E1; text-align: center; }
+  th { background: #F1F5F9; font-size: 12px; font-weight: 800; padding: 9px 4px; border-bottom: 2px solid #CBD5E1; }
+  td { padding: 9px 4px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #E2E8F0; font-family: monospace; }
+  tr.active-row { background: var(--highlight-row); }
+  tr.active-row td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+  .status-banner { margin-top: 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .controls { margin-top: 16px; display: flex; gap: 10px; opacity: 0.45; transition: opacity 0.2s; }
+  .controls:hover { opacity: 1; }
+  button { background: #F1F5F9; border: 1px solid #CBD5E1; padding: 6px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="slide-stage">
+    <div class="header">
+      <h1>8-Bit ALU (alu_8bit) — Arithmetic, Logic &amp; Status Flags</h1>
+      <div class="equation-badge">Inputs: A[7:0], B[7:0], OP[3:0] &rarr; RESULT[7:0] + Flags [Z, C, N, V]</div>
+    </div>
+    <div class="main-grid">
+      <div class="schematic-card">
+        <svg viewBox="0 0 650 360">
+          <!-- Input Wires -->
+          <path id="w-a" class="wire high" d="M 115 95 L 235 95" />
+          <path id="w-b" class="wire high" d="M 115 245 L 235 245" />
+          <path id="w-op" class="wire high" d="M 305 330 L 305 262" />
+
+          <!-- Output Wires -->
+          <path id="w-res" class="wire high" d="M 375 170 L 495 170" />
+          <path id="w-z" class="wire" d="M 355 120 L 460 65 L 545 65" />
+          <path id="w-c" class="wire" d="M 365 140 L 460 105 L 545 105" />
+          <path id="w-n" class="wire" d="M 365 200 L 460 235 L 545 235" />
+          <path id="w-v" class="wire" d="M 355 220 L 460 275 L 545 275" />
+
+          <!-- Classic IEEE V-Notched ALU Polygon -->
+          <polygon points="235,45 375,105 375,235 235,295 235,205 270,170 235,135" class="gate-box" />
+          <text class="gate-label" x="315" y="155">ALU</text>
+          <text id="op-name" x="315" y="182" font-size="14" font-weight="800" fill="#10B981" text-anchor="middle">ADD</text>
+
+          <!-- Port Labels -->
+          <text class="port-label" x="15" y="68">A[7:0]</text>
+          <text class="port-label" x="15" y="218">B[7:0]</text>
+          <text class="port-label" x="215" y="340">OP[3:0]</text>
+          <text class="port-label" x="505" y="142">RESULT[7:0]</text>
+          <text class="port-label" x="580" y="65">flag_z</text>
+          <text class="port-label" x="580" y="105">flag_c</text>
+          <text class="port-label" x="580" y="235">flag_n</text>
+          <text class="port-label" x="580" y="275">flag_v</text>
+
+          <!-- Bus Badges -->
+          <g transform="translate(20, 80)"><rect width="95" height="30" rx="6" fill="#1E293B"/><text id="t-a" x="47.5" y="15" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0x0A (10)</text></g>
+          <g transform="translate(20, 230)"><rect width="95" height="30" rx="6" fill="#1E293B"/><text id="t-b" x="47.5" y="15" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0x05 (5)</text></g>
+          <g transform="translate(270, 320)"><rect width="70" height="28" rx="6" fill="#3B82F6"/><text id="t-op" x="35" y="14" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0001</text></g>
+          <g transform="translate(495, 155)"><rect id="c-res" width="105" height="32" rx="6" fill="#10B981"/><text id="t-res" x="52.5" y="16" fill="#FFF" font-family="monospace" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central">0x0F (15)</text></g>
+
+          <!-- Flag Badges -->
+          <g transform="translate(545, 65)"><circle id="c-z" r="13" fill="#64748B"/><text id="t-z" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+          <g transform="translate(545, 105)"><circle id="c-c" r="13" fill="#64748B"/><text id="t-c" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+          <g transform="translate(545, 235)"><circle id="c-n" r="13" fill="#64748B"/><text id="t-n" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+          <g transform="translate(545, 275)"><circle id="c-v" r="13" fill="#64748B"/><text id="t-v" fill="#FFF" font-size="12" font-weight="800" text-anchor="middle" dominant-baseline="central">0</text></g>
+
+          <g id="pulse-layer"></g>
+        </svg>
+      </div>
+
+      <div class="table-card">
+        <div class="table-title">ALU Opcode &amp; Flag Verification</div>
+        <table>
+          <thead><tr><th>OP</th><th>Mnemonic</th><th>A</th><th>B</th><th>RESULT</th><th>Z C N V</th></tr></thead>
+          <tbody>
+            <tr id="row-0"><td>0001</td><td>ADD</td><td>0x0A</td><td>0x05</td><td>0x0F</td><td>0 0 0 0</td></tr>
+            <tr id="row-1"><td>0001</td><td>ADD (Carry)</td><td>0xFF</td><td>0x01</td><td>0x00</td><td>1 1 0 0</td></tr>
+            <tr id="row-2"><td>0010</td><td>SUB (Zero)</td><td>0x0A</td><td>0x0A</td><td>0x00</td><td>1 0 0 0</td></tr>
+            <tr id="row-3"><td>0011</td><td>AND</td><td>0xAA</td><td>0x0F</td><td>0x0A</td><td>0 0 0 0</td></tr>
+            <tr id="row-4"><td>0101</td><td>XOR</td><td>0xFF</td><td>0xAA</td><td>0x55</td><td>0 0 0 0</td></tr>
+            <tr id="row-5"><td>0110</td><td>SHL</td><td>0x81</td><td>--</td><td>0x02</td><td>0 1 0 0</td></tr>
+          </tbody>
+        </table>
+        <div class="status-banner" id="banner">Initializing ALU...</div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">Pause</button>
+    <button onclick="nextStep()">Next Operation &rarr;</button>
+  </div>
+
+<script>
+  const cases = [
+    { op: "0001", name: "ADD", a: "0x0A (10)", b: "0x05 (5)", res: "0x0F (15)", z: 0, c: 0, n: 0, v: 0, text: "ADD (0001): 10 + 5 = 15 (0x0F) → All flags 0" },
+    { op: "0001", name: "ADD", a: "0xFF (255)", b: "0x01 (1)", res: "0x00 (0)", z: 1, c: 1, n: 0, v: 0, text: "ADD Overflow: 255 + 1 = 0x00 → Zero (Z=1) & Carry (C=1) triggered!" },
+    { op: "0010", name: "SUB", a: "0x0A (10)", b: "0x0A (10)", res: "0x00 (0)", z: 1, c: 0, n: 0, v: 0, text: "SUB / CMP (0010): 10 - 10 = 0 → Zero Flag (Z=1) set for BEQ" },
+    { op: "0011", name: "AND", a: "0xAA", b: "0x0F", res: "0x0A", z: 0, c: 0, n: 0, v: 0, text: "Bitwise AND (0011): 10101010 & 00001111 = 00001010 (0x0A)" },
+    { op: "0101", name: "XOR", a: "0xFF", b: "0xAA", res: "0x55", z: 0, c: 0, n: 0, v: 0, text: "Bitwise XOR (0101): Inverts selected bits → 01010101 (0x55)" },
+    { op: "0110", name: "SHL", a: "0x81", b: "0x00", res: "0x02", z: 0, c: 1, n: 0, v: 0, text: "Shift Left (0110): MSB '1' shifts out into Carry Flag (C=1)" }
+  ];
+
+  let currentIdx = 0, isPlaying = true, timer = null, runToken = 0;
+
+  function setFlag(id, val) {
+    const c = document.getElementById(`c-${id}`);
+    const t = document.getElementById(`t-${id}`);
+    const w = document.getElementById(`w-${id}`);
+    if (c) c.setAttribute("fill", val ? "#10B981" : "#64748B");
+    if (t) t.textContent = val;
+    if (w) w.classList.toggle("high", val === 1);
+  }
+
+  function animatePulse(pathId, color, durationMs, token) {
+    return new Promise((resolve) => {
+      const path = document.getElementById(pathId);
+      const layer = document.getElementById("pulse-layer");
+      if (!path || !layer || token !== runToken) return resolve();
+      const len = path.getTotalLength();
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "10");
+      circle.setAttribute("fill", color);
+      circle.setAttribute("stroke", "#FFFFFF");
+      circle.setAttribute("stroke-width", "2");
+      layer.appendChild(circle);
+
+      const start = performance.now();
+      function frame(now) {
+        if (token !== runToken) { if (circle.parentNode) layer.removeChild(circle); return resolve(); }
+        const p = Math.min((now - start) / durationMs, 1);
+        const pt = path.getPointAtLength(p * len);
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        if (p < 1) requestAnimationFrame(frame);
+        else { if (circle.parentNode) layer.removeChild(circle); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  async function runCase(idx) {
+    const token = ++runToken;
+    document.getElementById("pulse-layer").innerHTML = "";
+    const c = cases[idx];
+    for (let i = 0; i < cases.length; i++) document.getElementById(`row-${i}`).classList.toggle("active-row", i === idx);
+
+    document.getElementById("t-a").textContent = c.a;
+    document.getElementById("t-b").textContent = c.b;
+    document.getElementById("t-op").textContent = c.op;
+    document.getElementById("op-name").textContent = c.name;
+    document.getElementById("banner").textContent = c.text;
+
+    await Promise.all([
+      animatePulse("w-a", "#10B981", 750, token),
+      animatePulse("w-b", "#10B981", 750, token),
+      animatePulse("w-op", "#3B82F6", 750, token)
+    ]);
+    if (token !== runToken) return;
+
+    await Promise.all([
+      animatePulse("w-res", "#10B981", 650, token),
+      animatePulse("w-z", c.z ? "#10B981" : "#64748B", 650, token),
+      animatePulse("w-c", c.c ? "#10B981" : "#64748B", 650, token),
+      animatePulse("w-n", c.n ? "#10B981" : "#64748B", 650, token),
+      animatePulse("w-v", c.v ? "#10B981" : "#64748B", 650, token)
+    ]);
+    if (token !== runToken) return;
+
+    document.getElementById("t-res").textContent = c.res;
+    setFlag("z", c.z); setFlag("c", c.c); setFlag("n", c.n); setFlag("v", c.v);
+  }
+
+  function scheduleNext() {
+    if (!isPlaying) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      currentIdx = (currentIdx + 1) % cases.length;
+      await runCase(currentIdx);
+      scheduleNext();
+    }, 1500);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    document.getElementById("playBtn").textContent = isPlaying ? "Pause" : "Resume";
+    if (isPlaying) scheduleNext(); else clearTimeout(timer);
+  }
+
+  async function nextStep() {
+    clearTimeout(timer);
+    currentIdx = (currentIdx + 1) % cases.length;
+    await runCase(currentIdx);
+    if (isPlaying) scheduleNext();
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => { await runCase(0); scheduleNext(); });
+</script>
+</body>
+</html>
